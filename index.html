@@ -409,7 +409,7 @@ async function mockReq(path, opts={}) {
   }
   if (path.includes('/generate/history')) return [];
   if (path.includes('/payment/create')) {
-    const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度套餐',credits:200}}[body.plan_id]||{price:30,name:'演示套餐',credits:10};
+    const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度套餐',credits:200},c500:{price:999,name:'企业会员',credits:500}}[body.plan_id]||{price:30,name:'演示套餐',credits:10};
     return {order_id:'DEMO'+Date.now(), amount:plan.price, name:plan.name, pay_url:'https://demo.lingkj.com/pay', pay_method:'page', _credits:plan.credits};
   }
   if (path.includes('/payment/status/')) return {status:'paid', credits:10};
@@ -495,11 +495,12 @@ const app = createApp({
         {id:'c10',  name:'10次点数包',  desc:'适合偶尔使用',    price:30,  credits:10},
         {id:'c50',  name:'月度会员',    desc:'每月50次，最划算',price:99,  credits:50},
         {id:'c200', name:'季度套餐',    desc:'每季200次，送礼佳选',price:269,credits:200},
+        {id:'c500', name:'企业会员',    desc:'每月500次，适合高频使用',price:999,credits:500},
       ],
       pricingPlans: [
         {id:'c10',  name:'按量充值',   price:'¥30', unit:'10次', desc:'随买随用，无月费',  features:['10次生成额度','高清输出','下载无水印'], cta:'立即充值', featured:false},
         {id:'c50',  name:'月度会员',   price:'¥99', unit:'月',   desc:'每月50次，折合¥2/次',features:['50次/月','2K高清优先','历史记录6个月'], cta:'开通会员', featured:true},
-        {id:'api',  name:'企业API',    price:'¥999',unit:'月',   desc:'500次/月，API接入', features:['500次/月','REST API','自定义品牌','商务支持'], cta:'联系商务', featured:false},
+        {id:'c500', name:'企业会员',   price:'¥999',unit:'月',   desc:'每月500次，适合高频团队使用', features:['500次/月','高清优先生成','历史记录12个月','优先支持服务'], cta:'开通会员', featured:false},
       ],
     }
   },
@@ -686,7 +687,7 @@ const app = createApp({
       const next = params.toString();
       history.replaceState({}, '', `${location.pathname}${next ? `?${next}` : ''}${location.hash || ''}`);
     },
-    buyPlan(p) { if(p.id==='api') { this.toast('请联系商务：business@lingkj.com'); return; } this.modal=null; this.createOrder(p.id); },
+    buyPlan(p) { this.modal=null; this.createOrder(p.id); },
     async ensureSampleUpload() {
       if (this.sampleUpload) return this.sampleUpload;
       try {

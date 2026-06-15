@@ -177,7 +177,7 @@ async def _query_alipay_trade(order_id: str) -> dict:
         "sign_type": "RSA2",
         "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
         "version": "1.0",
-        "biz_content": json.dumps({"out_trade_no": order_id}, ensure_ascii=False, separators=(",", ":")),
+        "biz_content": json.dumps({"out_trade_no": order_id}, ensure_ascii=True, separators=(",", ":")),
     }
     params["sign"] = _alipay_sign(params)
     async with httpx.AsyncClient(timeout=60) as client:
@@ -191,8 +191,8 @@ def _build_alipay_form(order_id: str, plan: dict, mobile: bool) -> str:
         "out_trade_no": order_id,
         "total_amount": f"{plan['price']:.2f}",
         "subject": plan["name"],
-        "body": plan["name"],
         "product_code": "QUICK_WAP_WAY" if mobile else "FAST_INSTANT_TRADE_PAY",
+        "timeout_express": "15m",
     }
     params = {
         "app_id": ALIPAY_APP_ID,
@@ -203,7 +203,7 @@ def _build_alipay_form(order_id: str, plan: dict, mobile: bool) -> str:
         "version": "1.0",
         "notify_url": ALIPAY_NOTIFY_URL,
         "return_url": _payment_return_url(order_id),
-        "biz_content": json.dumps(biz_content, ensure_ascii=False, separators=(",", ":")),
+        "biz_content": json.dumps(biz_content, ensure_ascii=True, separators=(",", ":")),
     }
     params["sign"] = _alipay_sign(params)
     inputs = "".join(
@@ -495,7 +495,8 @@ def history(uid=Depends(current_uid)):
 # ─── PAYMENT ──────────────────────────────────────────
 PLANS = {"c10":{"price":30,"credits":10,"name":"10次点数包"},
          "c50":{"price":99,"credits":50,"name":"月度会员"},
-         "c200":{"price":269,"credits":200,"name":"季度套餐"}}
+         "c200":{"price":269,"credits":200,"name":"季度套餐"},
+         "c500":{"price":999,"credits":500,"name":"企业会员"}}
 
 class OrderReq(BaseModel):
     plan_id: str
