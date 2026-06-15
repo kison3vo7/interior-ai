@@ -2,7 +2,7 @@ services:
   - type: web
     name: interior-ai
     runtime: docker
-    plan: starter
+    plan: free
     dockerContext: .
     dockerfilePath: ./backend/Dockerfile
     healthCheckPath: /docs
