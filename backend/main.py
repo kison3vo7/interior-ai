@@ -199,7 +199,7 @@ async def _precreate_alipay_trade(order_id: str, plan: dict) -> dict:
     data = await _alipay_api_call("alipay.trade.precreate", biz_content)
     return data.get("alipay_trade_precreate_response", {})
 
-def _build_alipay_form(order_id: str, plan: dict, mobile: bool) -> str:
+def _build_alipay_form(order_id: str, plan: dict, mobile: bool, embed_qr: bool = False) -> str:
     method = "alipay.trade.wap.pay" if mobile else "alipay.trade.page.pay"
     biz_content = {
         "out_trade_no": order_id,
@@ -208,6 +208,9 @@ def _build_alipay_form(order_id: str, plan: dict, mobile: bool) -> str:
         "product_code": "QUICK_WAP_WAY" if mobile else "FAST_INSTANT_TRADE_PAY",
         "timeout_express": "15m",
     }
+    if not mobile and embed_qr:
+        biz_content["qr_pay_mode"] = "4"
+        biz_content["qrcode_width"] = 280
     params = {
         "app_id": ALIPAY_APP_ID,
         "method": method,
@@ -543,11 +546,12 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
             "amount": plan["price"],
             "name": plan["name"],
             "pay_url": pay_url,
+            "embed_pay_url": f"{pay_url}?embed=1" if not mobile else None,
             "pay_method": "wap" if mobile else "page",
             "provider": "alipay",
             "return_url": _payment_return_url(oid),
             "qr_code": precreate_qr,
-            "display_mode": "qr" if precreate_qr and not mobile else "redirect",
+            "display_mode": "qr" if precreate_qr and not mobile else ("iframe" if not mobile else "redirect"),
         }
     return {
         "order_id": oid,
@@ -589,7 +593,8 @@ def alipay_checkout(order_id: str, request: Request):
     if not plan:
         raise HTTPException(400, "无效套餐")
     mobile = "mobile" in (request.headers.get("user-agent", "").lower())
-    return HTMLResponse(_build_alipay_form(order_id, plan, mobile))
+    embed_qr = request.query_params.get("embed") == "1"
+    return HTMLResponse(_build_alipay_form(order_id, plan, mobile, embed_qr=embed_qr))
 
 @app.get("/api/payment/mock/{order_id}", response_class=HTMLResponse)
 def mock_checkout(order_id: str):
