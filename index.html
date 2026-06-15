@@ -351,11 +351,13 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
         <div class="pay-qr-wrap">
           <img class="pay-qr-img" :src="order.qrCodeDataUrl" alt="支付宝支付二维码">
         </div>
+        <div class="pay-hint" style="color:#b45309">若支付宝提示 AE150003030，通常是收款账号和付款账号一致。请换一个支付宝账号，或改用电脑端付款。</div>
         <div class="pay-hint">如果扫码无响应，可点击下方按钮打开支付宝收银台</div>
       </template>
       <template v-else-if="order?.embedPayUrl">
         <div class="pay-hint" style="margin-top:0;color:var(--p)">请直接使用支付宝扫描下方官方支付码</div>
         <iframe class="pay-iframe" :src="order.embedPayUrl" title="支付宝支付"></iframe>
+        <div class="pay-hint" style="color:#b45309">若支付宝提示 AE150003030，通常是收款账号和付款账号一致。请换一个支付宝账号，或改用电脑端付款。</div>
         <div class="pay-hint">如果内嵌页显示异常，可点击下方按钮跳转支付宝收银台</div>
       </template>
       <template v-else>
@@ -364,7 +366,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       </template>
       <div class="pay-hint" style="margin-top:4px;color:var(--p)">支付后会自动返回并刷新点数</div>
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-primary" style="flex:1" @click="openPayUrl">{{ order?.qrCodeDataUrl ? '打开支付宝收银台' : '立即打开' }}</button>
+        <button class="btn btn-primary" style="flex:1" @click="openPayUrl">{{ order?.qrCodeDataUrl ? '电脑端付款' : '立即打开' }}</button>
         <button class="btn btn-ghost" style="flex:1" @click="modal=null">取消</button>
       </div>
     </div>
@@ -655,7 +657,7 @@ const app = createApp({
         const d = await req('/api/payment/create', {method:'POST', body:JSON.stringify({plan_id:planId})});
         this.order = {
           ...d,
-          qrCodeDataUrl: d.qr_image_url || (d.qr_code ? this.buildQrDataUrl(d.qr_code) : ''),
+          qrCodeDataUrl: d.qr_image_url || (d.qr_code && /^https:\/\/(?:mobilecodec\.alipay\.com\/show\.htm\?code=|qr\.alipay\.com\/)/i.test(d.qr_code) ? this.buildQrDataUrl(d.qr_code) : ''),
           embedPayUrl: d.embed_pay_url || '',
         };
         this.modal='order';
@@ -671,7 +673,7 @@ const app = createApp({
         const code = text.replace(/^https:\/\/qr\.alipay\.com\//i, '').replace(/\/+$/,'');
         return `https://mobilecodec.alipay.com/show.htm?code=${encodeURIComponent(code)}`;
       }
-      return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(text)}`;
+      return '';
     },
     openPayUrl() {
       if (!this.order?.pay_url) return;
