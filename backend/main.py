@@ -10,7 +10,7 @@ try:
     from pillow_heif import register_heif_opener
 except Exception:  # pragma: no cover - optional runtime dependency
     register_heif_opener = None
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, BackgroundTasks, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
@@ -57,7 +57,7 @@ app = FastAPI(title="灵感空间AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 # ─── DB ───────────────────────────────────────────────
 def get_db():
@@ -308,9 +308,30 @@ async def _sync_alipay_order(order_id: str) -> tuple[bool, str | None]:
         return True, result.get("trade_no")
     return False, result.get("trade_no")
 
-def current_uid(cred: HTTPAuthorizationCredentials = Depends(security)):
+def _set_auth_cookie(response: Response, token: str):
+    response.set_cookie(
+        key="lkj_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=_site_base_url().startswith("https://"),
+        max_age=60 * 60 * 24 * 30,
+        path="/",
+    )
+
+def _clear_auth_cookie(response: Response):
+    response.delete_cookie("lkj_token", path="/")
+
+def current_uid(request: Request, cred: HTTPAuthorizationCredentials = Depends(security)):
     try:
-        return jwt.decode(cred.credentials, JWT_SECRET, algorithms=["HS256"])["sub"]
+        token = None
+        if cred and cred.credentials:
+            token = cred.credentials
+        elif request.cookies.get("lkj_token"):
+            token = request.cookies.get("lkj_token")
+        if not token:
+            raise HTTPException(401, "未登录")
+        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])["sub"]
     except Exception:
         raise HTTPException(401, "Token 无效")
 
@@ -325,7 +346,7 @@ class AuthReq(BaseModel):
     phone: str; password: str
 
 @app.post("/api/auth/register")
-def register(r: AuthReq):
+def register(r: AuthReq, response: Response):
     hashed = bcrypt.hashpw(r.password.encode(), bcrypt.gensalt()).decode()
     db = get_db()
     initial_credits = TEST_ACCOUNT_MIN_CREDITS if r.phone == TEST_ACCOUNT_PHONE else 1
@@ -334,19 +355,26 @@ def register(r: AuthReq):
         db.commit()
         uid = db.execute("SELECT id FROM users WHERE phone=?", (r.phone,)).fetchone()[0]
         token = jwt.encode({"sub": uid, "exp": datetime.utcnow()+timedelta(days=30)}, JWT_SECRET)
+        _set_auth_cookie(response, token)
         return {"token": token, "credits": initial_credits, "plan": "free"}
     except sqlite3.IntegrityError:
         raise HTTPException(400, "手机号已注册")
 
 @app.post("/api/auth/login")
-def login(r: AuthReq):
+def login(r: AuthReq, response: Response):
     db = get_db()
     row = db.execute("SELECT id,password,credits,plan FROM users WHERE phone=?", (r.phone,)).fetchone()
     if not row or not bcrypt.checkpw(r.password.encode(), row[1].encode()):
         raise HTTPException(401, "手机号或密码错误")
     credits = _ensure_test_account_credits(db, r.phone)
     token = jwt.encode({"sub": row[0], "exp": datetime.utcnow()+timedelta(days=30)}, JWT_SECRET)
+    _set_auth_cookie(response, token)
     return {"token": token, "credits": credits if credits is not None else row[2], "plan": row[3]}
+
+@app.post("/api/auth/logout")
+def logout(response: Response):
+    _clear_auth_cookie(response)
+    return {"ok": True}
 
 @app.get("/api/auth/me")
 def me(uid=Depends(current_uid)):

@@ -486,7 +486,7 @@ async function req(path, opts={}) {
   if (token) h['Authorization'] = `Bearer ${token}`;
   if (opts.body && !(opts.body instanceof FormData)) h['Content-Type'] = 'application/json';
   try {
-    const r = await fetch(API_BASE + path, {...opts, headers:{...h,...(opts.headers||{})}});
+    const r = await fetch(API_BASE + path, {...opts, credentials:'include', headers:{...h,...(opts.headers||{})}});
     if (!r.ok) {
       const e = await r.json().catch(()=>({detail:r.statusText}));
       if (r.status === 401) {
@@ -707,6 +707,7 @@ const app = createApp({
       finally { this.loading=false; }
     },
     logout() {
+      req('/api/auth/logout', { method:'POST' }).catch(()=>{});
       localStorage.removeItem('lkj_token'); localStorage.removeItem('lkj_user'); localStorage.removeItem(ACCOUNT_STORAGE_KEY);
       this.user=null; this.page='home'; this.toast('已退出登录');
     },
