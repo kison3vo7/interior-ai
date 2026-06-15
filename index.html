@@ -602,8 +602,14 @@ const app = createApp({
         const me = await req('/api/auth/me');
         this.user = { phone: me.phone, credits: me.credits, plan: me.plan || 'free' };
         localStorage.setItem('lkj_user', JSON.stringify(this.user));
-      } catch {
-        // 保留本地状态，避免登录态瞬时失败直接把页面清空
+      } catch (e) {
+        const token = localStorage.getItem('lkj_token');
+        if (!token) {
+          this.user = null;
+          localStorage.removeItem('lkj_user');
+          return;
+        }
+        console.warn('refreshCurrentUser failed', e);
       }
     },
     restorePendingOrder() {
@@ -738,13 +744,18 @@ const app = createApp({
     async pollJob(jobId) {
       const labels=['正在分析空间结构...','提取房型特征...','应用风格迁移...','高清渲染中...','输出效果图...'];
       let i=0;
-      while(true) {
+      let attempts = 0;
+      while(attempts < 60) {
         await new Promise(r=>setTimeout(r,2000));
         try {
           const d = await req(`/api/generate/status/${jobId}`);
-          this.job=d; this.progLabel=labels[Math.min(i++,labels.length-1)]; this.progPct=Math.min(95,i*20);
+          attempts += 1;
+          this.job=d; this.progLabel=labels[Math.min(i++,labels.length-1)]; this.progPct=Math.min(95,Math.max(i*20, Math.floor((attempts / 60) * 95)));
           if(d.status==='done'||d.status==='failed') { this.progPct=100; break; }
         } catch(e) { this.job={status:'failed',error:e.message}; break; }
+      }
+      if (attempts >= 60 && this.job?.status !== 'done' && this.job?.status !== 'failed') {
+        this.job = {status:'failed', error:'生成超时，请重试一次。如仍失败，请更换图片或稍后再试。'};
       }
     },
     _progTimer: null,

@@ -27,6 +27,12 @@ load_dotenv()
 if register_heif_opener:
     register_heif_opener()
 
+APP_DATA_ROOT = Path(os.getenv("APP_DATA_ROOT", "/var/data")).resolve()
+UPLOAD_ROOT = Path(os.getenv("UPLOAD_DIR", APP_DATA_ROOT / "uploads")).resolve()
+DATA_ROOT = Path(os.getenv("DATA_DIR", APP_DATA_ROOT / "data")).resolve()
+UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+DATA_ROOT.mkdir(parents=True, exist_ok=True)
+
 ARK_API_KEY  = os.getenv("ARK_API_KEY", "")
 JWT_SECRET   = os.getenv("JWT_SECRET", "dev-secret")
 ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-260128")
@@ -38,8 +44,8 @@ PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "")
 NEXT_PUBLIC_BASE_URL = os.getenv("NEXT_PUBLIC_BASE_URL", "")
 DOMAIN = os.getenv("DOMAIN", "")
 ALIPAY_GATEWAY = os.getenv("ALIPAY_GATEWAY", "https://openapi.alipay.com/gateway.do")
-UPLOAD_DIR   = Path("uploads"); UPLOAD_DIR.mkdir(exist_ok=True)
-DATA_DIR     = Path("data"); DATA_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR   = UPLOAD_ROOT
+DATA_DIR     = DATA_ROOT
 DB_PATH      = DATA_DIR / "app.db"
 ROOT_DIR = Path(__file__).resolve().parent.parent
 INDEX_HTML = ROOT_DIR / "index.html"
@@ -523,7 +529,11 @@ async def call_doubao(input_path: str, style: str, quality: str) -> str:
         )
         if not r2.is_success:
             raise RuntimeError(f"豆包API错误: {r2.text}")
-        return r2.json()["data"][0]["url"]
+        data = r2.json()
+        items = data.get("data") or []
+        if not items or not items[0].get("url"):
+            raise RuntimeError(f"豆包API返回异常: {json.dumps(data, ensure_ascii=False)}")
+        return items[0]["url"]
 
 async def process_job(job_id: str, input_path: str, style: str, quality: str):
     db = get_db()
@@ -532,6 +542,7 @@ async def process_job(job_id: str, input_path: str, style: str, quality: str):
         url = await call_doubao(input_path, style, quality)
         db.execute("UPDATE jobs SET status='done',output_url=? WHERE id=?", (url, job_id))
     except Exception as e:
+        print(f"[job:{job_id}] failed style={style} quality={quality} input={input_path} error={e}")
         db.execute("UPDATE jobs SET status='failed',error=? WHERE id=?", (str(e), job_id))
     finally:
         db.commit()
