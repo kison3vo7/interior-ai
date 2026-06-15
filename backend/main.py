@@ -516,7 +516,9 @@ async def process_job(job_id: str, input_path: str, style: str, quality: str):
 
 @app.post("/api/generate/upload")
 async def upload(file: UploadFile = File(...), uid=Depends(current_uid)):
-    if not file.content_type.startswith("image/"):
+    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence"}
+    content_type = (file.content_type or "").lower()
+    if not (content_type.startswith("image/") or content_type in allowed_types):
         raise HTTPException(400, "仅支持图片")
     ext = file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "jpg"
     path = UPLOAD_DIR / f"{uuid.uuid4()}.{ext}"
