@@ -37,6 +37,8 @@ DB_PATH      = DATA_DIR / "app.db"
 ROOT_DIR = Path(__file__).resolve().parent.parent
 INDEX_HTML = ROOT_DIR / "index.html"
 ALIPAY_PRECREATE_ALLOWED = True
+TEST_ACCOUNT_PHONE = "15251872890"
+TEST_ACCOUNT_MIN_CREDITS = 500
 
 app = FastAPI(title="灵感空间AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -60,6 +62,19 @@ def get_db():
         amount INTEGER, credits INTEGER, status TEXT DEFAULT 'pending', created_at TEXT)""")
     conn.commit()
     return conn
+
+def _ensure_test_account_credits(db, phone: str) -> int | None:
+    if phone != TEST_ACCOUNT_PHONE:
+        return None
+    row = db.execute("SELECT credits FROM users WHERE phone=?", (phone,)).fetchone()
+    if not row:
+        return None
+    credits = int(row[0] or 0)
+    if credits < TEST_ACCOUNT_MIN_CREDITS:
+        db.execute("UPDATE users SET credits=? WHERE phone=?", (TEST_ACCOUNT_MIN_CREDITS, phone))
+        db.commit()
+        return TEST_ACCOUNT_MIN_CREDITS
+    return credits
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -294,12 +309,13 @@ class AuthReq(BaseModel):
 def register(r: AuthReq):
     hashed = bcrypt.hashpw(r.password.encode(), bcrypt.gensalt()).decode()
     db = get_db()
+    initial_credits = TEST_ACCOUNT_MIN_CREDITS if r.phone == TEST_ACCOUNT_PHONE else 1
     try:
-        db.execute("INSERT INTO users(phone,password,credits,plan) VALUES(?,?,?,?)", (r.phone, hashed, 1, "free"))
+        db.execute("INSERT INTO users(phone,password,credits,plan) VALUES(?,?,?,?)", (r.phone, hashed, initial_credits, "free"))
         db.commit()
         uid = db.execute("SELECT id FROM users WHERE phone=?", (r.phone,)).fetchone()[0]
         token = jwt.encode({"sub": uid, "exp": datetime.utcnow()+timedelta(days=30)}, JWT_SECRET)
-        return {"token": token, "credits": 1, "plan": "free"}
+        return {"token": token, "credits": initial_credits, "plan": "free"}
     except sqlite3.IntegrityError:
         raise HTTPException(400, "手机号已注册")
 
@@ -309,13 +325,16 @@ def login(r: AuthReq):
     row = db.execute("SELECT id,password,credits,plan FROM users WHERE phone=?", (r.phone,)).fetchone()
     if not row or not bcrypt.checkpw(r.password.encode(), row[1].encode()):
         raise HTTPException(401, "手机号或密码错误")
+    credits = _ensure_test_account_credits(db, r.phone)
     token = jwt.encode({"sub": row[0], "exp": datetime.utcnow()+timedelta(days=30)}, JWT_SECRET)
-    return {"token": token, "credits": row[2], "plan": row[3]}
+    return {"token": token, "credits": credits if credits is not None else row[2], "plan": row[3]}
 
 @app.get("/api/auth/me")
 def me(uid=Depends(current_uid)):
-    row = get_db().execute("SELECT phone,credits,plan FROM users WHERE id=?", (uid,)).fetchone()
-    return {"phone": row[0], "credits": row[1], "plan": row[2]}
+    db = get_db()
+    row = db.execute("SELECT phone,credits,plan FROM users WHERE id=?", (uid,)).fetchone()
+    credits = _ensure_test_account_credits(db, row[0])
+    return {"phone": row[0], "credits": credits if credits is not None else row[1], "plan": row[2]}
 
 # ─── GENERATE ─────────────────────────────────────────
 STYLES = {
