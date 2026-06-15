@@ -533,7 +533,10 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
                 precreate = await _precreate_alipay_trade(oid, plan)
                 if precreate.get("code") == "10000" and precreate.get("qr_code"):
                     precreate_qr = precreate.get("qr_code")
-            except Exception:
+                else:
+                    print(f"[alipay] precreate unavailable order={oid} code={precreate.get('code')} sub_code={precreate.get('sub_code')} msg={precreate.get('msg')} sub_msg={precreate.get('sub_msg')}")
+            except Exception as exc:
+                print(f"[alipay] precreate exception order={oid} error={exc}", flush=True)
                 precreate_qr = None
         return {
             "order_id": oid,
