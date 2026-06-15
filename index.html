@@ -666,6 +666,11 @@ const app = createApp({
     },
     buildQrDataUrl(text) {
       if (!text) return '';
+      if (/^https:\/\/mobilecodec\.alipay\.com\/show\.htm\?code=/i.test(text)) return text;
+      if (/^https:\/\/qr\.alipay\.com\//i.test(text)) {
+        const code = text.replace(/^https:\/\/qr\.alipay\.com\//i, '').replace(/\/+$/,'');
+        return `https://mobilecodec.alipay.com/show.htm?code=${encodeURIComponent(code)}`;
+      }
       return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(text)}`;
     },
     openPayUrl() {
