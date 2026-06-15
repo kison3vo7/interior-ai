@@ -655,7 +655,7 @@ const app = createApp({
         const d = await req('/api/payment/create', {method:'POST', body:JSON.stringify({plan_id:planId})});
         this.order = {
           ...d,
-          qrCodeDataUrl: d.qr_code ? this.buildQrDataUrl(d.qr_code) : '',
+          qrCodeDataUrl: d.qr_image_url || (d.qr_code ? this.buildQrDataUrl(d.qr_code) : ''),
           embedPayUrl: d.embed_pay_url || '',
         };
         this.modal='order';

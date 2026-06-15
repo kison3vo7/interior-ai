@@ -199,7 +199,7 @@ async def _precreate_alipay_trade(order_id: str, plan: dict) -> dict:
     data = await _alipay_api_call("alipay.trade.precreate", biz_content)
     return data.get("alipay_trade_precreate_response", {})
 
-async def _extract_page_pay_qr(order_id: str, plan: dict) -> str | None:
+async def _extract_page_pay_qr(order_id: str, plan: dict) -> dict | None:
     html = _build_alipay_form(order_id, plan, mobile=False, embed_qr=True)
     inputs = {k: unescape(v) for k, v in re.findall(r'name="([^"]+)" value="([^"]*)"', html)}
     if not inputs:
@@ -208,11 +208,11 @@ async def _extract_page_pay_qr(order_id: str, plan: dict) -> str | None:
         resp = await client.post(ALIPAY_GATEWAY, data=inputs)
     text = resp.content.decode("gb18030", errors="ignore")
     m = re.search(r'name="qrCode"[^>]*value="([^"]+)"', text)
-    if m:
-        return m.group(1)
+    qr_code = m.group(1) if m else None
     m = re.search(r'name="qrImgUrl"[^>]*value="([^"]+)"', text)
-    if m:
-        return m.group(1)
+    qr_img_url = m.group(1) if m else None
+    if qr_code or qr_img_url:
+        return {"qr_code": qr_code, "qr_image_url": qr_img_url}
     print(f"[alipay] page qr not found order={order_id} final_url={resp.url}", flush=True)
     return None
 
@@ -549,6 +549,7 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
         pay_url = f"{_site_base_url()}/api/payment/checkout/{oid}"
         precreate_qr = None
         page_qr = None
+        qr_image_url = None
         if not mobile:
             try:
                 precreate = await _precreate_alipay_trade(oid, plan)
@@ -556,15 +557,22 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
                     precreate_qr = precreate.get("qr_code")
                 else:
                     print(f"[alipay] precreate unavailable order={oid} code={precreate.get('code')} sub_code={precreate.get('sub_code')} msg={precreate.get('msg')} sub_msg={precreate.get('sub_msg')}")
-                    page_qr = await _extract_page_pay_qr(oid, plan)
+                    page_qr_data = await _extract_page_pay_qr(oid, plan)
+                    if page_qr_data:
+                        page_qr = page_qr_data.get("qr_code")
+                        qr_image_url = page_qr_data.get("qr_image_url")
             except Exception as exc:
                 print(f"[alipay] precreate exception order={oid} error={exc}", flush=True)
                 precreate_qr = None
                 try:
-                    page_qr = await _extract_page_pay_qr(oid, plan)
+                    page_qr_data = await _extract_page_pay_qr(oid, plan)
+                    if page_qr_data:
+                        page_qr = page_qr_data.get("qr_code")
+                        qr_image_url = page_qr_data.get("qr_image_url")
                 except Exception as inner_exc:
                     print(f"[alipay] page qr extract failed order={oid} error={inner_exc}", flush=True)
                     page_qr = None
+                    qr_image_url = None
         return {
             "order_id": oid,
             "amount": plan["price"],
@@ -575,6 +583,7 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
             "provider": "alipay",
             "return_url": _payment_return_url(oid),
             "qr_code": precreate_qr or page_qr,
+            "qr_image_url": qr_image_url,
             "display_mode": "qr" if (precreate_qr or page_qr) and not mobile else ("iframe" if not mobile else "redirect"),
         }
     return {
