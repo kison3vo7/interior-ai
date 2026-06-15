@@ -572,7 +572,7 @@ const app = createApp({
   },
   mounted() {
     this.restoreSavedAccount();
-    if (this.user && !localStorage.getItem('lkj_token')) {
+    if (!localStorage.getItem('lkj_token')) {
       this.tryAutoLogin();
     } else if (this.user && localStorage.getItem('lkj_token')) {
       this.refreshCurrentUser();
