@@ -193,7 +193,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       <div v-if="!upload" class="upload-area" @click="$refs.fi.click()" @dragover.prevent @drop.prevent="handleFileDrop">
         <div style="font-size:40px;margin-bottom:12px">📸</div>
         <div style="font-weight:700;margin-bottom:6px">点击或拖拽上传房间照片</div>
-        <div style="font-size:13px;color:var(--muted)">支持 JPG / PNG · 建议 1024×768 以上</div>
+        <div style="font-size:13px;color:var(--muted)">支持 JPG / PNG / HEIC / HEIF · 建议 1024×768 以上</div>
         <div style="margin-top:12px">
           <button class="btn btn-ghost" style="font-size:13px" @click.stop="useSample">使用示例图片</button>
         </div>
@@ -402,10 +402,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 
 <!-- TOAST -->
 <div class="toast" :class="{error:toastType==='error'}" v-if="toastMsg">{{ toastMsg }}</div>
-
-<footer style="padding:28px 20px 40px;color:var(--muted);font-size:12px;text-align:center">
-  <div style="margin-bottom:8px">灵感空间AI · 一张照片秒变精装效果图</div>
-</footer>
 
 </div><!-- #app -->
 
@@ -675,7 +671,14 @@ const app = createApp({
     },
     async handleFileDrop(e) { await this.handleFile(e.dataTransfer.files[0]); },
     async handleFile(file) {
-      if (!file||!file.type.startsWith('image/')) return;
+      if (!file) return;
+      const name = (file.name || '').toLowerCase();
+      const isImageByType = (file.type || '').startsWith('image/');
+      const isImageByExt = /\.(jpg|jpeg|png|webp|heic|heif)$/i.test(name);
+      if (!isImageByType && !isImageByExt) {
+        this.toast('请上传 JPG、PNG、HEIC 或 HEIF 图片', 'error');
+        return;
+      }
       if (!this.user || !localStorage.getItem('lkj_token')) {
         this.openAuth('login');
         return;

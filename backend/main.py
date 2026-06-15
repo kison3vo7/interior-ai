@@ -5,7 +5,11 @@ from io import BytesIO
 from html import escape, unescape
 
 import httpx, bcrypt, jwt
-from PIL import Image
+from PIL import Image, ImageDraw
+try:
+    from pillow_heif import register_heif_opener
+except Exception:  # pragma: no cover - optional runtime dependency
+    register_heif_opener = None
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -19,6 +23,9 @@ from cryptography.hazmat.primitives import serialization as crypto_serialization
 from cryptography.hazmat.backends import default_backend
 
 load_dotenv()
+
+if register_heif_opener:
+    register_heif_opener()
 
 ARK_API_KEY  = os.getenv("ARK_API_KEY", "")
 JWT_SECRET   = os.getenv("JWT_SECRET", "dev-secret")
@@ -389,6 +396,21 @@ def _image_data_uri(input_path: str) -> str:
         mime = "image/png" if ext == ".png" else "image/jpeg"
         return f"data:{mime};base64,{_image_base64(input_path)}"
 
+def _normalize_uploaded_image(file: UploadFile, content: bytes) -> tuple[str, bytes]:
+    filename = file.filename or ""
+    suffix = Path(filename).suffix.lower()
+    try:
+        with Image.open(BytesIO(content)) as img:
+            img = img.convert("RGB")
+            buf = BytesIO()
+            img.save(buf, format="JPEG", quality=95, optimize=True)
+            return ".jpg", buf.getvalue()
+    except Exception:
+        # Keep the original file only when PIL cannot decode it; later generation
+        # will surface a clear backend error rather than a silent upload failure.
+        ext = suffix if suffix else ".jpg"
+        return ext, content
+
 def _control_signal_data_uri(input_path: str) -> str:
     path = Path(input_path)
     if not path.exists():
@@ -520,9 +542,10 @@ async def upload(file: UploadFile = File(...), uid=Depends(current_uid)):
     content_type = (file.content_type or "").lower()
     if not (content_type.startswith("image/") or content_type in allowed_types):
         raise HTTPException(400, "仅支持图片")
-    ext = file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "jpg"
-    path = UPLOAD_DIR / f"{uuid.uuid4()}.{ext}"
-    path.write_bytes(await file.read())
+    raw = await file.read()
+    ext, normalized = _normalize_uploaded_image(file, raw)
+    path = UPLOAD_DIR / f"{uuid.uuid4()}{ext}"
+    path.write_bytes(normalized)
     return {"file_id": path.name}
 
 @app.post("/api/generate/{file_id}")
