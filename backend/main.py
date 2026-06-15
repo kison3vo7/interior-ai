@@ -63,7 +63,11 @@ def get_db():
 @app.get("/", response_class=HTMLResponse)
 def home():
     if INDEX_HTML.exists():
-        return FileResponse(INDEX_HTML)
+        resp = FileResponse(INDEX_HTML)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
     return HTMLResponse("<h1>灵感空间AI</h1><p>Frontend not found.</p>", status_code=200)
 
 def _site_base_url() -> str:
