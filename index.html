@@ -89,6 +89,11 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .pay-iframe{width:100%;height:520px;border:1px solid var(--border);border-radius:14px;background:#fff}
 .pay-hint{font-size:13px;color:var(--muted);margin-top:10px}
 .amount{font-size:32px;font-weight:800;color:var(--p);text-align:center;margin:8px 0}
+.legal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.legal-card{border:1px solid var(--border);border-radius:12px;padding:18px;background:#fff}
+.legal-card h3{font-size:16px;margin-bottom:8px}
+.legal-card p,.legal-card li{font-size:13px;color:var(--muted)}
+.legal-card ul{padding-left:18px}
 @media(max-width:600px){.styles-grid{grid-template-columns:repeat(2,1fr)}.result-grid{grid-template-columns:1fr}.nav-links{display:none}}
 </style>
 </head>
@@ -136,6 +141,27 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       <div style="text-align:center" v-for="s in [{n:'10秒',l:'单张生成速度'},{n:'12种',l:'热门装修风格'},{n:'完整方案',l:'按房间结构生成'},{n:'¥3起',l:'单张生成费用'}]">
         <div style="font-size:26px;font-weight:800;color:var(--p)">{{s.n}}</div>
         <div style="font-size:13px;color:var(--muted)">{{s.l}}</div>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="legal-grid">
+      <div class="legal-card">
+        <h3>服务说明</h3>
+        <p>灵感空间AI 提供房间照片分析、装修风格切换和效果图生成服务。</p>
+      </div>
+      <div class="legal-card">
+        <h3>退款规则</h3>
+        <p>点数类商品属于数字服务，充值后立即生效；如未使用可联系客服协商处理。</p>
+      </div>
+      <div class="legal-card">
+        <h3>联系方式</h3>
+        <p>邮箱：support@lingkj.com</p>
+        <p>工作时间：周一至周日 9:00-21:00</p>
+      </div>
+      <div class="legal-card">
+        <h3>隐私与协议</h3>
+        <p>上传图片仅用于效果图生成与结果展示，不做无关用途。</p>
       </div>
     </div>
   </div>
@@ -323,7 +349,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   <div class="modal">
     <h2>充值点数</h2>
     <div style="display:grid;gap:10px">
-      <div v-for="p in chargePlans" :key="p.id" class="plan" style="cursor:pointer" @click="createOrder(p.id)">
+      <div v-for="p in chargePlans" :key="p.id" class="plan" :style="loading ? 'cursor:not-allowed;opacity:.7' : 'cursor:pointer'" @click="!loading && createOrder(p.id)">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div>
             <div style="font-weight:700">{{ p.name }}</div>
@@ -340,7 +366,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 </div>
 
 <!-- ===== ORDER PAY MODAL ===== -->
-<div class="overlay" v-if="modal==='order'" @click.self="modal=null">
+<div class="overlay" v-if="modal==='order'" @click.self="closeOrderModal">
   <div class="modal" style="text-align:center">
     <h2>支付宝支付</h2>
     <div class="amount">¥{{ order?.amount }}</div>
@@ -367,7 +393,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       <div class="pay-hint" style="margin-top:4px;color:var(--p)">支付后会自动返回并刷新点数</div>
       <div style="display:flex;gap:10px;margin-top:16px">
         <button class="btn btn-primary" style="flex:1" @click="openPayUrl">{{ order?.qrCodeDataUrl ? '电脑端付款' : '立即打开' }}</button>
-        <button class="btn btn-ghost" style="flex:1" @click="modal=null">取消</button>
+        <button class="btn btn-ghost" style="flex:1" @click="closeOrderModal">取消</button>
       </div>
     </div>
     <p style="font-size:12px;color:var(--muted);margin-top:8px">订单号：{{ order?.order_id }}</p>
@@ -376,6 +402,11 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 
 <!-- TOAST -->
 <div class="toast" :class="{error:toastType==='error'}" v-if="toastMsg">{{ toastMsg }}</div>
+
+<footer style="padding:28px 20px 40px;color:var(--muted);font-size:12px;text-align:center">
+  <div style="margin-bottom:8px">灵感空间AI · 一张照片秒变精装效果图</div>
+  <div>服务说明 · 退款规则 · 隐私政策 · 联系方式：support@lingkj.com</div>
+</footer>
 
 </div><!-- #app -->
 
@@ -386,10 +417,12 @@ const API_BASE = window.__API__ || (
     ? 'http://127.0.0.1:8000'
     : (location.hostname === 'localhost' ? 'http://localhost:8000' : '')
 );
-let DEMO_MODE = false; // auto-set after first failed ping
+const IS_LOCAL_DEMO_ALLOWED = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+let DEMO_MODE = false; // only auto-set for local/offline preview
+const ORDER_STORAGE_KEY = 'lkj_pending_order';
 
 // Demo state (in-memory)
-const _db = { users:{}, pollCount:{} };
+const _db = { users:{}, pollCount:{}, orders:{} };
 const DEMO_IMGS = {
   modern:     'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&auto=format',
   nordic:     'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&auto=format',
@@ -429,9 +462,24 @@ async function mockReq(path, opts={}) {
   if (path.includes('/generate/history')) return [];
   if (path.includes('/payment/create')) {
     const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度套餐',credits:200},c500:{price:999,name:'企业会员',credits:500}}[body.plan_id]||{price:30,name:'演示套餐',credits:10};
-    return {order_id:'DEMO'+Date.now(), amount:plan.price, name:plan.name, pay_url:'https://demo.lingkj.com/pay', pay_method:'page', _credits:plan.credits};
+    const token = (opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
+    const phone = token.startsWith('Bearer demo_') ? token.replace('Bearer demo_','') : '';
+    const orderId = 'DEMO'+Date.now();
+    _db.orders[orderId] = { phone, credits: plan.credits, status: 'pending' };
+    return {order_id:orderId, amount:plan.price, name:plan.name, pay_url:'https://demo.lingkj.com/pay', pay_method:'page', _credits:plan.credits};
   }
-  if (path.includes('/payment/status/')) return {status:'paid', credits:10};
+  if (path.includes('/payment/status/')) {
+    const orderId = path.split('/').pop();
+    const order = _db.orders[orderId];
+    if (!order) throw new Error('订单不存在');
+    if (order.status !== 'paid') {
+      order.status = 'paid';
+      if (order.phone && _db.users[order.phone]) {
+        _db.users[order.phone].credits += order.credits;
+      }
+    }
+    return {status:'paid', credits:_db.users[order.phone]?.credits || order.credits};
+  }
   return {};
 }
 
@@ -463,7 +511,7 @@ async function req(path, opts={}) {
     }
     return r.json();
   } catch(e) {
-    if (e.message==='Failed to fetch'||e.message.includes('Load failed')||e.message.includes('NetworkError')) {
+    if (IS_LOCAL_DEMO_ALLOWED && (e.message==='Failed to fetch'||e.message.includes('Load failed')||e.message.includes('NetworkError'))) {
       DEMO_MODE = true;
       if (window._vueApp) window._vueApp.isDemoMode = true;
       return mockReq(path, opts);
@@ -527,11 +575,63 @@ const app = createApp({
     if (this.user && !localStorage.getItem('lkj_token')) {
       this.user = null;
       localStorage.removeItem('lkj_user');
+    } else if (this.user && localStorage.getItem('lkj_token')) {
+      this.refreshCurrentUser();
     }
-    this.handlePaymentReturn();
-    this.ensureSampleUpload();
-  },
+      this.restorePendingOrder();
+      this.handlePaymentReturn();
+      this.ensureSampleUpload();
+    },
   methods: {
+    persistPendingOrder() {
+      if (!this.order?.order_id) return;
+      localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify({
+        order_id: this.order.order_id,
+        amount: this.order.amount || '',
+        name: this.order.name || '支付宝支付',
+        pay_url: this.order.pay_url || '',
+        embedPayUrl: this.order.embedPayUrl || '',
+        qrCodeDataUrl: this.order.qrCodeDataUrl || '',
+      }));
+    },
+    clearPendingOrder() {
+      localStorage.removeItem(ORDER_STORAGE_KEY);
+    },
+    closeOrderModal() {
+      this.modal = null;
+      this.order = null;
+      this.clearPendingOrder();
+    },
+    async refreshCurrentUser() {
+      try {
+        const me = await req('/api/auth/me');
+        this.user = { phone: me.phone, credits: me.credits, plan: me.plan || 'free' };
+        localStorage.setItem('lkj_user', JSON.stringify(this.user));
+      } catch {
+        // 保留本地状态，避免登录态瞬时失败直接把页面清空
+      }
+    },
+    restorePendingOrder() {
+      if (!this.user) return;
+      try {
+        const raw = localStorage.getItem(ORDER_STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        if (!saved?.order_id) return;
+        this.order = {
+          amount: '',
+          name: '支付宝支付',
+          pay_url: '',
+          embedPayUrl: '',
+          qrCodeDataUrl: '',
+          ...saved,
+        };
+        this.modal = 'order';
+        this.pollPayment(saved.order_id);
+      } catch {
+        this.clearPendingOrder();
+      }
+    },
     openAuth(tab) { this.authTab=tab; this.authError=''; this.modal='auth'; },
     async submitAuth() {
       if (!this.form.phone || !this.form.password) { this.authError='请填写手机号和密码'; return; }
@@ -545,6 +645,7 @@ const app = createApp({
         localStorage.setItem('lkj_token', d.token);
         this.user = {phone:this.form.phone, credits:d.credits, plan:d.plan||'free'};
         localStorage.setItem('lkj_user', JSON.stringify(this.user));
+        await this.refreshCurrentUser();
         this.modal=null;
         this.toast(this.authTab==='register'?'注册成功':'登录成功');
         this.page='generate';
@@ -651,6 +752,7 @@ const app = createApp({
     },
     stopProgAnim() { clearInterval(this._progTimer); },
     async createOrder(planId) {
+      if (this.loading) return;
       if (!this.user) { this.modal=null; this.openAuth('register'); return; }
       this.loading=true;
       try {
@@ -661,6 +763,7 @@ const app = createApp({
           embedPayUrl: d.embed_pay_url || '',
         };
         this.modal='order';
+        this.persistPendingOrder();
         if (!this.order.qrCodeDataUrl && !this.order.embedPayUrl) this.openPayUrl();
         else this.pollPayment(this.order.order_id);
       } catch(e) { this.toast(e.message,'error'); }
@@ -698,6 +801,7 @@ const app = createApp({
             this.user.credits = d.credits;
             localStorage.setItem('lkj_user', JSON.stringify(this.user));
             this.modal=null; this.order=null;
+            this.clearPendingOrder();
             this.toast(`充值成功！当前余额 ${d.credits} 次`);
             this.orderPolling = false;
             return;
@@ -712,7 +816,16 @@ const app = createApp({
       if (!orderId) return;
       if (this.user) {
         this.modal = 'order';
-        this.order = this.order || { order_id: orderId, amount: '', name: '支付宝支付' };
+        this.order = {
+          amount: '',
+          name: '支付宝支付',
+          pay_url: '',
+          embedPayUrl: '',
+          qrCodeDataUrl: '',
+          ...(this.order || {}),
+          order_id: orderId,
+        };
+        this.persistPendingOrder();
         this.pollPayment(orderId);
       }
       params.delete('payment');
