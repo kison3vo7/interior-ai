@@ -36,6 +36,7 @@ DATA_DIR     = Path("data"); DATA_DIR.mkdir(exist_ok=True)
 DB_PATH      = DATA_DIR / "app.db"
 ROOT_DIR = Path(__file__).resolve().parent.parent
 INDEX_HTML = ROOT_DIR / "index.html"
+ALIPAY_PRECREATE_ALLOWED = True
 
 app = FastAPI(title="灵感空间AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -198,6 +199,12 @@ async def _precreate_alipay_trade(order_id: str, plan: dict) -> dict:
     }
     data = await _alipay_api_call("alipay.trade.precreate", biz_content)
     return data.get("alipay_trade_precreate_response", {})
+
+def _disable_alipay_precreate(reason: str) -> None:
+    global ALIPAY_PRECREATE_ALLOWED
+    if ALIPAY_PRECREATE_ALLOWED:
+        print(f"[alipay] disable precreate fallback reason={reason}", flush=True)
+    ALIPAY_PRECREATE_ALLOWED = False
 
 async def _extract_page_pay_qr(order_id: str, plan: dict) -> dict | None:
     html = _build_alipay_form(order_id, plan, mobile=False, embed_qr=True)
@@ -552,11 +559,18 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
         qr_image_url = None
         if not mobile:
             try:
-                precreate = await _precreate_alipay_trade(oid, plan)
-                if precreate.get("code") == "10000" and precreate.get("qr_code"):
-                    precreate_qr = precreate.get("qr_code")
-                else:
-                    print(f"[alipay] precreate unavailable order={oid} code={precreate.get('code')} sub_code={precreate.get('sub_code')} msg={precreate.get('msg')} sub_msg={precreate.get('sub_msg')}")
+                if ALIPAY_PRECREATE_ALLOWED:
+                    precreate = await _precreate_alipay_trade(oid, plan)
+                    if precreate.get("code") == "10000" and precreate.get("qr_code"):
+                        precreate_qr = precreate.get("qr_code")
+                    else:
+                        sub_code = precreate.get("sub_code") or ""
+                        msg = precreate.get("msg") or ""
+                        sub_msg = precreate.get("sub_msg") or ""
+                        print(f"[alipay] precreate unavailable order={oid} code={precreate.get('code')} sub_code={sub_code} msg={msg} sub_msg={sub_msg}", flush=True)
+                        if sub_code == "ACQ.ACCESS_FORBIDDEN" or "ACCESS_FORBIDDEN" in sub_msg:
+                            _disable_alipay_precreate(f"{sub_code or msg}:{sub_msg}")
+                if not precreate_qr:
                     page_qr_data = await _extract_page_pay_qr(oid, plan)
                     if page_qr_data:
                         page_qr = page_qr_data.get("qr_code")

@@ -108,14 +108,23 @@ docker compose up --build
 生产环境至少需要配置：
 
 ```bash
-ALIPAY_APP_ID=202100xxxxxxxxxxxx
+ALIPAY_APP_ID=2021006147626992
 ALIPAY_PRIVATE_KEY=your_private_key
 ALIPAY_PUBLIC_KEY=alipay_public_key
-ALIPAY_NOTIFY_URL=https://yourdomain.com/api/payment/callback/alipay
-DOMAIN=yourdomain.com
-PUBLIC_SITE_URL=https://yourdomain.com
-NEXT_PUBLIC_BASE_URL=https://yourdomain.com
+ALIPAY_NOTIFY_URL=https://interior-ai-aemn.onrender.com/api/payment/callback/alipay
+DOMAIN=interior-ai-aemn.onrender.com
+PUBLIC_SITE_URL=https://interior-ai-aemn.onrender.com
+NEXT_PUBLIC_BASE_URL=https://interior-ai-aemn.onrender.com
 ```
+
+当前线上已经验证通过的一组口径是：
+
+```bash
+PUBLIC_SITE_URL=https://interior-ai-aemn.onrender.com
+ALIPAY_NOTIFY_URL=https://interior-ai-aemn.onrender.com/api/payment/callback/alipay
+```
+
+如果后面切正式自定义域名，再把这两个值一起替换成新域名，避免支付返回地址和异步回调地址不一致。
 
 ## 线上部署
 
