@@ -1,4 +1,4 @@
-import os, uuid, sqlite3, base64, asyncio, time, json
+import os, uuid, sqlite3, base64, asyncio, time, json, re
 from datetime import datetime, timedelta
 from pathlib import Path
 from io import BytesIO
@@ -198,6 +198,22 @@ async def _precreate_alipay_trade(order_id: str, plan: dict) -> dict:
     }
     data = await _alipay_api_call("alipay.trade.precreate", biz_content)
     return data.get("alipay_trade_precreate_response", {})
+
+async def _extract_page_pay_qr(order_id: str, plan: dict) -> str | None:
+    html = _build_alipay_form(order_id, plan, mobile=False, embed_qr=True)
+    inputs = dict(re.findall(r'name="([^"]+)" value="([^"]*)"', html))
+    if not inputs:
+        return None
+    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+        resp = await client.post(ALIPAY_GATEWAY, data=inputs)
+    text = resp.content.decode("gb18030", errors="ignore")
+    m = re.search(r'id="J_qrCode"\s+value="([^"]+)"', text)
+    if m:
+        return m.group(1)
+    m = re.search(r'id="J_qrImgUrl"\s+value="([^"]+)"', text)
+    if m:
+        return m.group(1)
+    return None
 
 def _build_alipay_form(order_id: str, plan: dict, mobile: bool, embed_qr: bool = False) -> str:
     method = "alipay.trade.wap.pay" if mobile else "alipay.trade.page.pay"
@@ -531,6 +547,7 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
         mobile = "mobile" in (request.headers.get("user-agent", "").lower())
         pay_url = f"{_site_base_url()}/api/payment/checkout/{oid}"
         precreate_qr = None
+        page_qr = None
         if not mobile:
             try:
                 precreate = await _precreate_alipay_trade(oid, plan)
@@ -538,9 +555,15 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
                     precreate_qr = precreate.get("qr_code")
                 else:
                     print(f"[alipay] precreate unavailable order={oid} code={precreate.get('code')} sub_code={precreate.get('sub_code')} msg={precreate.get('msg')} sub_msg={precreate.get('sub_msg')}")
+                    page_qr = await _extract_page_pay_qr(oid, plan)
             except Exception as exc:
                 print(f"[alipay] precreate exception order={oid} error={exc}", flush=True)
                 precreate_qr = None
+                try:
+                    page_qr = await _extract_page_pay_qr(oid, plan)
+                except Exception as inner_exc:
+                    print(f"[alipay] page qr extract failed order={oid} error={inner_exc}", flush=True)
+                    page_qr = None
         return {
             "order_id": oid,
             "amount": plan["price"],
@@ -550,8 +573,8 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
             "pay_method": "wap" if mobile else "page",
             "provider": "alipay",
             "return_url": _payment_return_url(oid),
-            "qr_code": precreate_qr,
-            "display_mode": "qr" if precreate_qr and not mobile else ("iframe" if not mobile else "redirect"),
+            "qr_code": precreate_qr or page_qr,
+            "display_mode": "qr" if (precreate_qr or page_qr) and not mobile else ("iframe" if not mobile else "redirect"),
         }
     return {
         "order_id": oid,
