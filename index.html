@@ -415,6 +415,7 @@ const API_BASE = window.__API__ || (
 const IS_LOCAL_DEMO_ALLOWED = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 let DEMO_MODE = false; // only auto-set for local/offline preview
 const ORDER_STORAGE_KEY = 'lkj_pending_order';
+const ACCOUNT_STORAGE_KEY = 'lkj_account';
 
 // Demo state (in-memory)
 const _db = { users:{}, pollCount:{}, orders:{} };
@@ -567,9 +568,9 @@ const app = createApp({
     }
   },
   mounted() {
+    this.restoreSavedAccount();
     if (this.user && !localStorage.getItem('lkj_token')) {
-      this.user = null;
-      localStorage.removeItem('lkj_user');
+      this.tryAutoLogin();
     } else if (this.user && localStorage.getItem('lkj_token')) {
       this.refreshCurrentUser();
     }
@@ -591,6 +592,46 @@ const app = createApp({
     },
     clearPendingOrder() {
       localStorage.removeItem(ORDER_STORAGE_KEY);
+    },
+    saveAccount(phone, password) {
+      localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify({ phone, password }));
+    },
+    restoreSavedAccount() {
+      try {
+        const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        if (saved?.phone && !this.form.phone) this.form.phone = saved.phone;
+      } catch {}
+    },
+    async tryAutoLogin() {
+      try {
+        const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
+        if (!raw) {
+          this.user = null;
+          localStorage.removeItem('lkj_user');
+          return;
+        }
+        const saved = JSON.parse(raw);
+        if (!saved?.phone || !saved?.password) {
+          this.user = null;
+          localStorage.removeItem('lkj_user');
+          return;
+        }
+        const d = await req('/api/auth/login', {
+          method:'POST',
+          body:JSON.stringify({ phone:saved.phone, password:saved.password }),
+          headers:{}
+        });
+        localStorage.setItem('lkj_token', d.token);
+        this.user = { phone:saved.phone, credits:d.credits, plan:d.plan || 'free' };
+        localStorage.setItem('lkj_user', JSON.stringify(this.user));
+        await this.refreshCurrentUser();
+      } catch {
+        this.user = null;
+        localStorage.removeItem('lkj_token');
+        localStorage.removeItem('lkj_user');
+      }
     },
     closeOrderModal() {
       this.modal = null;
@@ -646,6 +687,7 @@ const app = createApp({
         localStorage.setItem('lkj_token', d.token);
         this.user = {phone:this.form.phone, credits:d.credits, plan:d.plan||'free'};
         localStorage.setItem('lkj_user', JSON.stringify(this.user));
+        this.saveAccount(this.form.phone, this.form.password);
         await this.refreshCurrentUser();
         this.modal=null;
         this.toast(this.authTab==='register'?'注册成功':'登录成功');
@@ -654,7 +696,7 @@ const app = createApp({
       finally { this.loading=false; }
     },
     logout() {
-      localStorage.removeItem('lkj_token'); localStorage.removeItem('lkj_user');
+      localStorage.removeItem('lkj_token'); localStorage.removeItem('lkj_user'); localStorage.removeItem(ACCOUNT_STORAGE_KEY);
       this.user=null; this.page='home'; this.toast('已退出登录');
     },
     goGenerate() {

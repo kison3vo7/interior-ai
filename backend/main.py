@@ -496,7 +496,6 @@ def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
     style_detail = STYLE_DETAILS.get(style, STYLE_DETAILS["modern"])
     size = resolve_output_size(input_path, quality)
     img_data_uri = _image_data_uri(input_path)
-    control_data_uri = _control_signal_data_uri(input_path)
     if not img_data_uri:
         raise RuntimeError("未读取到用户上传的原始房间图片，无法生成参考设计图")
     payload = {
@@ -505,15 +504,8 @@ def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
         "n": 1,
         "size": size,
         "response_format": "url",
+        "reference_images": [img_data_uri],
     }
-    # Seedream 5.0 supports direct image-to-image input; use it preferentially.
-    if "seedream-5-0" in ARK_IMAGE_MODEL:
-        payload["image"] = img_data_uri
-        if control_data_uri:
-            payload["reference_images"] = [control_data_uri]
-        return payload
-
-    payload["reference_images"] = [img_data_uri, control_data_uri] if control_data_uri else [img_data_uri]
     return payload
 
 async def call_doubao(input_path: str, style: str, quality: str) -> str:
