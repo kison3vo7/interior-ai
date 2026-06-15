@@ -497,9 +497,12 @@ async function req(path, opts={}) {
           window._vueApp.upload = null;
           window._vueApp.job = null;
           window._vueApp.loading = false;
-          window._vueApp.authError = '登录状态已失效，请重新登录';
-          window._vueApp.authTab = 'login';
-          window._vueApp.modal = 'auth';
+          await window._vueApp.tryAutoLogin();
+          if (!window._vueApp.user) {
+            window._vueApp.authError = '登录状态已失效，请重新登录';
+            window._vueApp.authTab = 'login';
+            window._vueApp.modal = 'auth';
+          }
         }
         throw new Error('登录状态已失效，请重新登录');
       }
