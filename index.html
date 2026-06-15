@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>灵空间AI — AI装修效果图</title>
+<title>灵感空间AI — AI装修效果图</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
 <style>
 :root{--p:#6366f1;--p2:#4f46e5;--g:#10b981;--bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0}
@@ -29,7 +29,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .hero{text-align:center;padding:72px 20px 48px;background:linear-gradient(180deg,#f0f0ff,var(--bg))}
 .hero h1{font-size:clamp(28px,5vw,52px);font-weight:800;line-height:1.15;margin-bottom:14px}
 .hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--p),#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.hero p{color:var(--muted);font-size:17px;max-width:480px;margin:0 auto 28px}
+.hero p{color:var(--muted);font-size:17px;max-width:760px;margin:0 auto 28px}
 /* APP */
 .step-tabs{display:flex;gap:8px;margin-bottom:20px}
 .step-tab{flex:1;padding:10px 6px;border-radius:10px;text-align:center;font-size:13px;font-weight:600;border:2px solid var(--border);color:var(--muted);cursor:pointer;transition:.15s}
@@ -100,7 +100,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 
 <!-- NAV -->
 <nav>
-  <div class="logo">🏠 灵空间AI</div>
+  <div class="logo">🏠 灵感空间AI</div>
   <div class="nav-links">
     <a @click="page='home'">首页</a>
     <a @click="goGenerate">在线生成</a>
@@ -124,13 +124,13 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   <div class="hero">
     <p style="display:inline-flex;align-items:center;gap:6px;background:#ede9fe;color:var(--p);font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px;margin-bottom:18px">🚀 AI装修效果图，10秒生成</p>
     <h1>一张照片<br><em>秒变精装效果图</em></h1>
-    <p>上传房间原图，选择装修风格，AI自动生成专业渲染效果</p>
+    <p>上传房间照片即可根据房间结构生成完整设计方案，12种热门装修风格随意切换，快速找到真正适合自己的理想家装风格。</p>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-primary" style="padding:13px 28px;font-size:16px" @click="goGenerate">立即体验</button>
       <button class="btn btn-ghost" style="padding:13px 28px;font-size:16px" @click="page='pricing'">查看定价</button>
     </div>
     <div style="display:flex;justify-content:center;gap:40px;margin-top:48px;flex-wrap:wrap">
-      <div style="text-align:center" v-for="s in [{n:'4万亿',l:'国内装修市场/年'},{n:'10秒',l:'单张生成速度'},{n:'6种',l:'主流装修风格'},{n:'¥3起',l:'单张生成费用'}]">
+      <div style="text-align:center" v-for="s in [{n:'10秒',l:'单张生成速度'},{n:'12种',l:'热门装修风格'},{n:'完整方案',l:'按房间结构生成'},{n:'¥3起',l:'单张生成费用'}]">
         <div style="font-size:26px;font-weight:800;color:var(--p)">{{s.n}}</div>
         <div style="font-size:13px;color:var(--muted)">{{s.l}}</div>
       </div>
@@ -141,7 +141,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
     <h2 style="color:#fff;font-size:28px;font-weight:800;margin-bottom:8px">三步生成效果图</h2>
     <p style="color:#94a3b8;margin-bottom:40px">无需设计师，无需3D建模</p>
     <div style="max-width:700px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
-      <div v-for="s in [{i:'📸',t:'上传房间照片',d:'手机拍一张，上传即可'},{i:'🎨',t:'选择装修风格',d:'6种主流风格，精准匹配'},{i:'⚡',t:'10秒生成',d:'AI识别空间，高清输出'}]" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px 16px">
+      <div v-for="s in [{i:'📸',t:'上传房间照片',d:'手机拍一张，AI识别户型与空间结构'},{i:'🎨',t:'选择装修风格',d:'12种热门风格自由切换，找到喜欢的家装方向'},{i:'⚡',t:'10秒生成',d:'自动输出完整设计方案与高清效果图'}]" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px 16px">
         <div style="font-size:32px;margin-bottom:12px">{{s.i}}</div>
         <div style="color:#fff;font-weight:700;margin-bottom:6px">{{s.t}}</div>
         <div style="color:#94a3b8;font-size:13px">{{s.d}}</div>
@@ -229,7 +229,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:14px">
-          <a class="btn btn-green" style="flex:1;text-align:center;padding:11px" :href="job.output_url" download="灵空间AI效果图.jpg">⬇ 下载高清图</a>
+          <a class="btn btn-green" style="flex:1;text-align:center;padding:11px" :href="job.output_url" download="灵感空间AI效果图.jpg">⬇ 下载高清图</a>
           <button class="btn btn-ghost" style="flex:1" @click="job=null;step=1">重新生成</button>
         </div>
         <button class="btn btn-ghost" style="width:100%;margin-top:8px" @click="goHistory">查看历史记录 →</button>
@@ -386,8 +386,8 @@ async function mockReq(path, opts={}) {
 
   if (path.includes('/auth/register')) {
     if (_db.users[body.phone]) throw new Error('手机号已注册');
-    _db.users[body.phone] = {password:body.password, credits:0};
-    return {token:'demo_'+body.phone, credits:0, plan:'free'};
+    _db.users[body.phone] = {password:body.password, credits:1};
+    return {token:'demo_'+body.phone, credits:1, plan:'free'};
   }
   if (path.includes('/auth/login')) {
     const u = _db.users[body.phone];

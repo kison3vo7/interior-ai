@@ -37,7 +37,7 @@ DB_PATH      = DATA_DIR / "app.db"
 ROOT_DIR = Path(__file__).resolve().parent.parent
 INDEX_HTML = ROOT_DIR / "index.html"
 
-app = FastAPI(title="灵空间AI")
+app = FastAPI(title="灵感空间AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
@@ -64,7 +64,7 @@ def get_db():
 def home():
     if INDEX_HTML.exists():
         return FileResponse(INDEX_HTML)
-    return HTMLResponse("<h1>灵空间AI</h1><p>Frontend not found.</p>", status_code=200)
+    return HTMLResponse("<h1>灵感空间AI</h1><p>Frontend not found.</p>", status_code=200)
 
 def _site_base_url() -> str:
     for value in (PUBLIC_SITE_URL, NEXT_PUBLIC_BASE_URL):
@@ -250,11 +250,11 @@ def register(r: AuthReq):
     hashed = bcrypt.hashpw(r.password.encode(), bcrypt.gensalt()).decode()
     db = get_db()
     try:
-        db.execute("INSERT INTO users(phone,password,credits,plan) VALUES(?,?,?,?)", (r.phone, hashed, 10, "free"))
+        db.execute("INSERT INTO users(phone,password,credits,plan) VALUES(?,?,?,?)", (r.phone, hashed, 1, "free"))
         db.commit()
         uid = db.execute("SELECT id FROM users WHERE phone=?", (r.phone,)).fetchone()[0]
         token = jwt.encode({"sub": uid, "exp": datetime.utcnow()+timedelta(days=30)}, JWT_SECRET)
-        return {"token": token, "credits": 10, "plan": "free"}
+        return {"token": token, "credits": 1, "plan": "free"}
     except sqlite3.IntegrityError:
         raise HTTPException(400, "手机号已注册")
 

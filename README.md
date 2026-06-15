@@ -1,4 +1,4 @@
-# 灵空间AI — 项目启动指南
+# 灵感空间AI — 项目启动指南
 
 ## 目录结构
 ```
@@ -81,7 +81,7 @@ docker compose up --build
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | /api/auth/register | 注册（送10次免费） |
+| POST | /api/auth/register | 注册（送1次免费） |
 | POST | /api/auth/login | 登录，返回JWT |
 | POST | /api/generate/upload | 上传房间图片 |
 | POST | /api/generate/{file_id} | 触发豆包生成，扣1点数 |
