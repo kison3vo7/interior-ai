@@ -314,6 +314,12 @@ def current_uid(cred: HTTPAuthorizationCredentials = Depends(security)):
     except Exception:
         raise HTTPException(401, "Token 无效")
 
+def _require_user_row(db, uid):
+    row = db.execute("SELECT id,phone,credits,plan FROM users WHERE id=?", (uid,)).fetchone()
+    if not row:
+        raise HTTPException(401, "账号不存在，请重新登录")
+    return row
+
 # ─── AUTH ─────────────────────────────────────────────
 class AuthReq(BaseModel):
     phone: str; password: str
@@ -345,9 +351,9 @@ def login(r: AuthReq):
 @app.get("/api/auth/me")
 def me(uid=Depends(current_uid)):
     db = get_db()
-    row = db.execute("SELECT phone,credits,plan FROM users WHERE id=?", (uid,)).fetchone()
-    credits = _ensure_test_account_credits(db, row[0])
-    return {"phone": row[0], "credits": credits if credits is not None else row[1], "plan": row[2]}
+    row = _require_user_row(db, uid)
+    credits = _ensure_test_account_credits(db, row[1])
+    return {"phone": row[1], "credits": credits if credits is not None else row[2], "plan": row[3]}
 
 # ─── GENERATE ─────────────────────────────────────────
 STYLES = {
@@ -554,8 +560,9 @@ async def upload(file: UploadFile = File(...), uid=Depends(current_uid)):
 @app.post("/api/generate/{file_id}")
 async def generate(file_id: str, req: GenReq, bg: BackgroundTasks, uid=Depends(current_uid)):
     db = get_db()
-    row = db.execute("SELECT credits FROM users WHERE id=?", (uid,)).fetchone()
-    if not row or row[0] < 1:
+    row = _require_user_row(db, uid)
+    credits = row[2]
+    if credits < 1:
         raise HTTPException(402, "点数不足，请先充值")
     input_path = str(UPLOAD_DIR / file_id)
     if not Path(input_path).exists():
@@ -593,6 +600,7 @@ class OrderReq(BaseModel):
 async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
     plan = PLANS.get(r.plan_id)
     if not plan: raise HTTPException(400, "无效套餐")
+    _require_user_row(get_db(), uid)
     oid = f"LKJ{int(time.time())}{uuid.uuid4().hex[:6].upper()}"
     db = get_db()
     db.execute("INSERT INTO orders VALUES(?,?,?,?,?,?,?)",
@@ -626,6 +634,7 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
 @app.get("/api/payment/status/{order_id}")
 async def order_status(order_id: str, uid=Depends(current_uid)):
     db = get_db()
+    _require_user_row(db, uid)
     row = db.execute("SELECT status FROM orders WHERE id=? AND user_id=?", (order_id, uid)).fetchone()
     if not row: raise HTTPException(404, "订单不存在")
     status = row[0]
