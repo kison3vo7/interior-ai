@@ -618,11 +618,20 @@ const app = createApp({
           localStorage.removeItem('lkj_user');
           return;
         }
-        const d = await req('/api/auth/login', {
-          method:'POST',
-          body:JSON.stringify({ phone:saved.phone, password:saved.password }),
-          headers:{}
-        });
+        let d;
+        try {
+          d = await req('/api/auth/login', {
+            method:'POST',
+            body:JSON.stringify({ phone:saved.phone, password:saved.password }),
+            headers:{}
+          });
+        } catch (loginError) {
+          d = await req('/api/auth/register', {
+            method:'POST',
+            body:JSON.stringify({ phone:saved.phone, password:saved.password }),
+            headers:{}
+          });
+        }
         localStorage.setItem('lkj_token', d.token);
         this.user = { phone:saved.phone, credits:d.credits, plan:d.plan || 'free' };
         localStorage.setItem('lkj_user', JSON.stringify(this.user));
@@ -646,8 +655,7 @@ const app = createApp({
       } catch (e) {
         const token = localStorage.getItem('lkj_token');
         if (!token) {
-          this.user = null;
-          localStorage.removeItem('lkj_user');
+          await this.tryAutoLogin();
           return;
         }
         console.warn('refreshCurrentUser failed', e);
