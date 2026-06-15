@@ -2,7 +2,7 @@ import os, uuid, sqlite3, base64, asyncio, time, json, re
 from datetime import datetime, timedelta
 from pathlib import Path
 from io import BytesIO
-from html import escape
+from html import escape, unescape
 
 import httpx, bcrypt, jwt
 from PIL import Image
@@ -201,7 +201,7 @@ async def _precreate_alipay_trade(order_id: str, plan: dict) -> dict:
 
 async def _extract_page_pay_qr(order_id: str, plan: dict) -> str | None:
     html = _build_alipay_form(order_id, plan, mobile=False, embed_qr=True)
-    inputs = dict(re.findall(r'name="([^"]+)" value="([^"]*)"', html))
+    inputs = {k: unescape(v) for k, v in re.findall(r'name="([^"]+)" value="([^"]*)"', html)}
     if not inputs:
         return None
     async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
@@ -213,6 +213,7 @@ async def _extract_page_pay_qr(order_id: str, plan: dict) -> str | None:
     m = re.search(r'id="J_qrImgUrl"\s+value="([^"]+)"', text)
     if m:
         return m.group(1)
+    print(f"[alipay] page qr not found order={order_id} final_url={resp.url}", flush=True)
     return None
 
 def _build_alipay_form(order_id: str, plan: dict, mobile: bool, embed_qr: bool = False) -> str:
