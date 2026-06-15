@@ -169,21 +169,35 @@ def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: s
             pass
         raise
 
-async def _query_alipay_trade(order_id: str) -> dict:
+async def _alipay_api_call(method: str, biz_content: dict) -> dict:
     params = {
         "app_id": ALIPAY_APP_ID,
-        "method": "alipay.trade.query",
+        "method": method,
         "charset": "UTF-8",
         "sign_type": "RSA2",
         "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
         "version": "1.0",
-        "biz_content": json.dumps({"out_trade_no": order_id}, ensure_ascii=True, separators=(",", ":")),
+        "biz_content": json.dumps(biz_content, ensure_ascii=True, separators=(",", ":")),
     }
     params["sign"] = _alipay_sign(params)
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(ALIPAY_GATEWAY, data=params)
-    data = _parse_alipay_json(resp.content)
+    return _parse_alipay_json(resp.content)
+
+async def _query_alipay_trade(order_id: str) -> dict:
+    data = await _alipay_api_call("alipay.trade.query", {"out_trade_no": order_id})
     return data.get("alipay_trade_query_response", {})
+
+async def _precreate_alipay_trade(order_id: str, plan: dict) -> dict:
+    biz_content = {
+        "out_trade_no": order_id,
+        "total_amount": f"{plan['price']:.2f}",
+        "subject": plan["name"],
+        "product_code": "FACE_TO_FACE_PAYMENT",
+        "timeout_express": "15m",
+    }
+    data = await _alipay_api_call("alipay.trade.precreate", biz_content)
+    return data.get("alipay_trade_precreate_response", {})
 
 def _build_alipay_form(order_id: str, plan: dict, mobile: bool) -> str:
     method = "alipay.trade.wap.pay" if mobile else "alipay.trade.page.pay"
@@ -513,6 +527,14 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
     if _alipay_enabled():
         mobile = "mobile" in (request.headers.get("user-agent", "").lower())
         pay_url = f"{_site_base_url()}/api/payment/checkout/{oid}"
+        precreate_qr = None
+        if not mobile:
+            try:
+                precreate = await _precreate_alipay_trade(oid, plan)
+                if precreate.get("code") == "10000" and precreate.get("qr_code"):
+                    precreate_qr = precreate.get("qr_code")
+            except Exception:
+                precreate_qr = None
         return {
             "order_id": oid,
             "amount": plan["price"],
@@ -521,6 +543,8 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
             "pay_method": "wap" if mobile else "page",
             "provider": "alipay",
             "return_url": _payment_return_url(oid),
+            "qr_code": precreate_qr,
+            "display_mode": "qr" if precreate_qr and not mobile else "redirect",
         }
     return {
         "order_id": oid,

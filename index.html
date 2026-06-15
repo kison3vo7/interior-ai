@@ -84,6 +84,8 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 @keyframes fadeup{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 /* PAY */
 .pay-box{text-align:center;padding:20px 0}
+.pay-qr-wrap{display:flex;justify-content:center;margin:14px 0}
+.pay-qr-img{width:220px;height:220px;border-radius:14px;background:#fff;border:1px solid var(--border);padding:10px;object-fit:contain}
 .pay-hint{font-size:13px;color:var(--muted);margin-top:10px}
 .amount{font-size:32px;font-weight:800;color:var(--p);text-align:center;margin:8px 0}
 @media(max-width:600px){.styles-grid{grid-template-columns:repeat(2,1fr)}.result-grid{grid-template-columns:1fr}.nav-links{display:none}}
@@ -343,11 +345,20 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
     <div class="amount">¥{{ order?.amount }}</div>
     <div style="font-size:14px;color:var(--muted);margin-bottom:16px">{{ order?.name }}</div>
     <div class="pay-box">
-      <div style="font-size:42px;margin-bottom:8px">🅰️</div>
-      <div class="pay-hint">正在打开支付宝收银台</div>
+      <template v-if="order?.qrCodeDataUrl">
+        <div class="pay-hint" style="margin-top:0;color:var(--p)">请打开支付宝扫一扫下方二维码</div>
+        <div class="pay-qr-wrap">
+          <img class="pay-qr-img" :src="order.qrCodeDataUrl" alt="支付宝支付二维码">
+        </div>
+        <div class="pay-hint">如果扫码无响应，可点击下方按钮打开支付宝收银台</div>
+      </template>
+      <template v-else>
+        <div style="font-size:42px;margin-bottom:8px">🅰️</div>
+        <div class="pay-hint">正在打开支付宝收银台</div>
+      </template>
       <div class="pay-hint" style="margin-top:4px;color:var(--p)">支付后会自动返回并刷新点数</div>
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-primary" style="flex:1" @click="openPayUrl">立即打开</button>
+        <button class="btn btn-primary" style="flex:1" @click="openPayUrl">{{ order?.qrCodeDataUrl ? '打开支付宝收银台' : '立即打开' }}</button>
         <button class="btn btn-ghost" style="flex:1" @click="modal=null">取消</button>
       </div>
     </div>
@@ -636,10 +647,19 @@ const app = createApp({
       this.loading=true;
       try {
         const d = await req('/api/payment/create', {method:'POST', body:JSON.stringify({plan_id:planId})});
-        this.order=d; this.modal='order';
-        this.openPayUrl();
+        this.order = {
+          ...d,
+          qrCodeDataUrl: d.qr_code ? this.buildQrDataUrl(d.qr_code) : '',
+        };
+        this.modal='order';
+        if (!this.order.qrCodeDataUrl) this.openPayUrl();
+        else this.pollPayment(this.order.order_id);
       } catch(e) { this.toast(e.message,'error'); }
       finally { this.loading=false; }
+    },
+    buildQrDataUrl(text) {
+      if (!text) return '';
+      return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(text)}`;
     },
     openPayUrl() {
       if (!this.order?.pay_url) return;
