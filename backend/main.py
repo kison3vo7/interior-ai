@@ -207,10 +207,10 @@ async def _extract_page_pay_qr(order_id: str, plan: dict) -> str | None:
     async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
         resp = await client.post(ALIPAY_GATEWAY, data=inputs)
     text = resp.content.decode("gb18030", errors="ignore")
-    m = re.search(r'id="J_qrCode"\s+value="([^"]+)"', text)
+    m = re.search(r'name="qrCode"[^>]*value="([^"]+)"', text)
     if m:
         return m.group(1)
-    m = re.search(r'id="J_qrImgUrl"\s+value="([^"]+)"', text)
+    m = re.search(r'name="qrImgUrl"[^>]*value="([^"]+)"', text)
     if m:
         return m.group(1)
     print(f"[alipay] page qr not found order={order_id} final_url={resp.url}", flush=True)
