@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: interior-ai
+    runtime: docker
+    plan: starter
+    dockerContext: .
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /docs
+    envVars:
+      - key: ARK_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ARK_IMAGE_MODEL
+        value: doubao-seedream-5-0-260128
+      - key: ALIPAY_APP_ID
+        sync: false
+      - key: ALIPAY_PRIVATE_KEY
+        sync: false
+      - key: ALIPAY_PUBLIC_KEY
+        sync: false
+      - key: ALIPAY_NOTIFY_URL
+        sync: false
+      - key: DOMAIN
+        sync: false
+      - key: PUBLIC_SITE_URL
+        sync: false
+      - key: NEXT_PUBLIC_BASE_URL
+        sync: false

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>灵空间AI — AI装修效果图</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<style>
+:root{--p:#6366f1;--p2:#4f46e5;--g:#10b981;--bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{cursor:pointer;text-decoration:none;color:inherit}
+/* NAV */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:16px}
+.logo{font-size:17px;font-weight:800;color:var(--p);white-space:nowrap}
+.nav-links{display:flex;gap:24px;font-size:14px;color:var(--muted)}
+.nav-links a:hover{color:var(--p)}
+.nav-right{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.credits-tag{font-size:13px;font-weight:700;color:var(--p);background:#ede9fe;padding:4px 10px;border-radius:100px}
+/* BUTTONS */
+.btn{padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--p);color:#fff}.btn-primary:hover{background:var(--p2)}
+.btn-green{background:var(--g);color:#fff}.btn-green:hover{background:#059669}
+.btn-ghost{background:none;color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--p);color:var(--p)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+/* LAYOUT */
+.container{max-width:960px;margin:0 auto;padding:32px 20px}
+.card{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:24px}
+/* HERO */
+.hero{text-align:center;padding:72px 20px 48px;background:linear-gradient(180deg,#f0f0ff,var(--bg))}
+.hero h1{font-size:clamp(28px,5vw,52px);font-weight:800;line-height:1.15;margin-bottom:14px}
+.hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--p),#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:var(--muted);font-size:17px;max-width:480px;margin:0 auto 28px}
+/* APP */
+.step-tabs{display:flex;gap:8px;margin-bottom:20px}
+.step-tab{flex:1;padding:10px 6px;border-radius:10px;text-align:center;font-size:13px;font-weight:600;border:2px solid var(--border);color:var(--muted);cursor:pointer;transition:.15s}
+.step-tab.active{border-color:var(--p);color:var(--p);background:#ede9fe}
+.upload-area{border:2px dashed var(--border);border-radius:12px;padding:48px 20px;text-align:center;cursor:pointer;transition:.15s}
+.upload-area:hover{border-color:var(--p);background:#f5f3ff}
+.upload-preview{position:relative;border-radius:12px;overflow:hidden}
+.upload-preview img{width:100%;max-height:260px;object-fit:cover;display:block}
+.styles-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.style-card{border:2px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:.15s;text-align:center}
+.style-card:hover,.style-card.active{border-color:var(--p)}
+.style-card.active{background:#ede9fe}
+.style-thumb{height:72px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.style-name{padding:6px;font-size:13px;font-weight:600}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.result-item{border-radius:10px;overflow:hidden;position:relative}
+.result-item img{width:100%;height:220px;object-fit:cover;display:block}
+.result-label{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:100px}
+/* HISTORY */
+.history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.history-card{background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+.history-card img{width:100%;height:140px;object-fit:cover}
+.history-info{padding:10px;font-size:12px;color:var(--muted)}
+/* PRICING */
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.plan{border:2px solid var(--border);border-radius:14px;padding:20px;transition:.15s;cursor:pointer}
+.plan:hover,.plan.featured{border-color:var(--p)}
+.plan-price{font-size:28px;font-weight:800;color:var(--p)}
+.plan-price small{font-size:13px;color:var(--muted);font-weight:400}
+.plan-desc{font-size:13px;color:var(--muted);margin:6px 0 12px}
+.plan-feat{list-style:none;font-size:13px;color:#475569}
+.plan-feat li::before{content:'✓ ';color:var(--g);font-weight:700}
+/* OVERLAY / MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:20px;font-weight:800;margin-bottom:20px}
+.tab-btns{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tab-btn{flex:1;padding:10px;font-size:14px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:.15s}
+.tab-btn.active{color:var(--p);border-bottom-color:var(--p)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+.field input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:.15s}
+.field input:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+/* PROGRESS */
+.prog-wrap{margin:12px 0}
+.prog-label{font-size:13px;color:var(--muted);text-align:center;margin-bottom:6px}
+.prog-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--p),#a855f7);border-radius:3px;transition:width .4s}
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;z-index:200;background:#1e293b;color:#fff;padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;pointer-events:none;animation:fadeup .3s}
+.toast.error{background:#ef4444}
+@keyframes fadeup{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+/* PAY */
+.pay-box{text-align:center;padding:20px 0}
+.pay-hint{font-size:13px;color:var(--muted);margin-top:10px}
+.amount{font-size:32px;font-weight:800;color:var(--p);text-align:center;margin:8px 0}
+@media(max-width:600px){.styles-grid{grid-template-columns:repeat(2,1fr)}.result-grid{grid-template-columns:1fr}.nav-links{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- DEMO BANNER -->
+<div v-if="isDemoMode" style="background:#f59e0b;color:#fff;text-align:center;padding:7px;font-size:13px;font-weight:600">
+  ⚡ 演示模式（后端未启动）— 注册/生成/支付均为模拟数据
+  <a style="color:#fff;text-decoration:underline;margin-left:10px;cursor:pointer" @click="isDemoMode=false;DEMO_MODE=false">我已启动后端，关闭提示</a>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">🏠 灵空间AI</div>
+  <div class="nav-links">
+    <a @click="page='home'">首页</a>
+    <a @click="goGenerate">在线生成</a>
+    <a @click="goHistory" v-if="user">历史记录</a>
+  </div>
+  <div class="nav-right">
+    <template v-if="user">
+      <span class="credits-tag">💎 {{ user.credits }} 次</span>
+      <button class="btn btn-ghost" @click="modal='payment'">充值</button>
+      <button class="btn btn-ghost" @click="logout">退出</button>
+    </template>
+    <template v-else>
+      <button class="btn btn-ghost" @click="openAuth('login')">登录</button>
+      <button class="btn btn-primary" @click="openAuth('register')">免费注册</button>
+    </template>
+  </div>
+</nav>
+
+<!-- ===== HOME PAGE ===== -->
+<template v-if="page==='home'">
+  <div class="hero">
+    <p style="display:inline-flex;align-items:center;gap:6px;background:#ede9fe;color:var(--p);font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px;margin-bottom:18px">🚀 AI装修效果图，10秒生成</p>
+    <h1>一张照片<br><em>秒变精装效果图</em></h1>
+    <p>上传房间原图，选择装修风格，AI自动生成专业渲染效果</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-primary" style="padding:13px 28px;font-size:16px" @click="goGenerate">立即体验</button>
+      <button class="btn btn-ghost" style="padding:13px 28px;font-size:16px" @click="page='pricing'">查看定价</button>
+    </div>
+    <div style="display:flex;justify-content:center;gap:40px;margin-top:48px;flex-wrap:wrap">
+      <div style="text-align:center" v-for="s in [{n:'4万亿',l:'国内装修市场/年'},{n:'10秒',l:'单张生成速度'},{n:'6种',l:'主流装修风格'},{n:'¥3起',l:'单张生成费用'}]">
+        <div style="font-size:26px;font-weight:800;color:var(--p)">{{s.n}}</div>
+        <div style="font-size:13px;color:var(--muted)">{{s.l}}</div>
+      </div>
+    </div>
+  </div>
+  <!-- How it works -->
+  <div style="background:#1e293b;padding:60px 20px;text-align:center">
+    <h2 style="color:#fff;font-size:28px;font-weight:800;margin-bottom:8px">三步生成效果图</h2>
+    <p style="color:#94a3b8;margin-bottom:40px">无需设计师，无需3D建模</p>
+    <div style="max-width:700px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+      <div v-for="s in [{i:'📸',t:'上传房间照片',d:'手机拍一张，上传即可'},{i:'🎨',t:'选择装修风格',d:'6种主流风格，精准匹配'},{i:'⚡',t:'10秒生成',d:'AI识别空间，高清输出'}]" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px 16px">
+        <div style="font-size:32px;margin-bottom:12px">{{s.i}}</div>
+        <div style="color:#fff;font-weight:700;margin-bottom:6px">{{s.t}}</div>
+        <div style="color:#94a3b8;font-size:13px">{{s.d}}</div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ===== GENERATE PAGE ===== -->
+<template v-if="page==='generate'">
+  <div class="container">
+    <div class="step-tabs">
+      <div class="step-tab" :class="{active:step>=1}" @click="step=1">① 上传图片</div>
+      <div class="step-tab" :class="{active:step>=2}" @click="step>=2&&(step=2)">② 选择风格</div>
+      <div class="step-tab" :class="{active:step>=3}">③ 生成效果</div>
+    </div>
+
+    <!-- Step 1: Upload -->
+    <div v-if="step===1" class="card">
+      <div v-if="!upload" class="upload-area" @click="$refs.fi.click()" @dragover.prevent @drop.prevent="handleFileDrop">
+        <div style="font-size:40px;margin-bottom:12px">📸</div>
+        <div style="font-weight:700;margin-bottom:6px">点击或拖拽上传房间照片</div>
+        <div style="font-size:13px;color:var(--muted)">支持 JPG / PNG · 建议 1024×768 以上</div>
+        <div style="margin-top:12px">
+          <button class="btn btn-ghost" style="font-size:13px" @click.stop="useSample">使用示例图片</button>
+        </div>
+      </div>
+      <div v-else class="upload-preview">
+        <img :src="upload.previewUrl||'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'260\'><rect width=\'400\' height=\'260\' fill=\'%23e2e8f0\'/><text x=\'200\' y=\'135\' text-anchor=\'middle\' font-size=\'18\' fill=\'%2364748b\' font-family=\'sans-serif\'>示例房间</text></svg>'" alt="房间预览">
+        <span style="position:absolute;top:10px;left:10px;background:var(--g);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px">✓ 已上传</span>
+        <button style="position:absolute;top:10px;right:10px;background:#fff;border:1px solid var(--border);font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer" @click="resetGenerationState">重新选择</button>
+      </div>
+      <input ref="fi" type="file" accept="image/*" style="display:none" @change="handleFileInput">
+      <div v-if="loading" style="text-align:center;padding:12px;color:var(--muted);font-size:14px">上传中...</div>
+      <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:14px;font-size:15px" :disabled="!upload||loading" @click="step=2">下一步：选择风格 →</button>
+    </div>
+
+    <!-- Step 2: Style -->
+    <div v-if="step===2" class="card">
+      <div style="font-weight:700;margin-bottom:14px">选择装修风格</div>
+      <div class="styles-grid">
+        <div class="style-card" v-for="s in styles" :key="s.key" :class="{active:selectedStyle===s.key}" @click="selectedStyle=s.key">
+          <div class="style-thumb" :style="`background:${s.bg}`">{{s.icon}}</div>
+          <div class="style-name">{{s.name}}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn btn-ghost" style="flex:1" @click="step=1">← 返回</button>
+        <button class="btn btn-primary" style="flex:2;padding:12px;font-size:15px" :disabled="!selectedStyle" @click="step=3">下一步：生成效果图 →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Generate -->
+    <div v-if="step===3" class="card">
+      <div v-if="!job">
+        <div style="background:#f8fafc;border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <span style="font-size:13px;color:var(--muted)">剩余点数：<strong style="color:var(--text)">{{ user?.credits||0 }} 次</strong> · 本次消耗：<strong>1次</strong></span>
+          <a style="font-size:12px;color:var(--p)" @click="modal='payment'">充值 →</a>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" style="flex:1" @click="step=2">← 返回</button>
+          <button class="btn btn-green" style="flex:2;padding:13px;font-size:16px;font-weight:800" :disabled="loading" @click="doGenerate">
+            {{ loading ? '处理中...' : '🚀 立即生成效果图' }}
+          </button>
+        </div>
+      </div>
+      <!-- Processing -->
+      <div v-else-if="job.status==='processing'||job.status==='pending'">
+        <div class="prog-wrap">
+          <div class="prog-label">{{ progLabel }}</div>
+          <div class="prog-bar"><div class="prog-fill" :style="`width:${progPct}%`"></div></div>
+        </div>
+        <div style="text-align:center;font-size:13px;color:var(--muted);margin-top:8px">AI正在生成，请稍候（约10–30秒）</div>
+      </div>
+      <!-- Done -->
+      <div v-else-if="job.status==='done'">
+        <div class="result-grid">
+          <div class="result-item">
+            <img :src="upload?.previewUrl||'https://placehold.co/400x220/e2e8f0/94a3b8?text=原始房间'" alt="原始">
+            <span class="result-label">原始房间</span>
+          </div>
+          <div class="result-item">
+            <img :src="job.output_url" alt="效果图" @error="$event.target.src='https://placehold.co/400x220/ede9fe/6366f1?text=效果图生成完成'">
+            <span class="result-label" style="background:var(--g)">AI效果图</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <a class="btn btn-green" style="flex:1;text-align:center;padding:11px" :href="job.output_url" download="灵空间AI效果图.jpg">⬇ 下载高清图</a>
+          <button class="btn btn-ghost" style="flex:1" @click="job=null;step=1">重新生成</button>
+        </div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:8px" @click="goHistory">查看历史记录 →</button>
+      </div>
+      <!-- Failed -->
+      <div v-else-if="job.status==='failed'" style="text-align:center;padding:20px">
+        <div style="font-size:36px;margin-bottom:12px">⚠️</div>
+        <div style="color:#ef4444;font-weight:700;margin-bottom:8px">生成失败</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px">{{ job.error || '请稍后重试' }}</div>
+        <button class="btn btn-primary" @click="job=null">重新尝试</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ===== HISTORY PAGE ===== -->
+<template v-if="page==='history'">
+  <div class="container">
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:20px">我的生成记录</h2>
+    <div v-if="history.length===0" style="text-align:center;padding:60px;color:var(--muted)">
+      暂无记录，<a style="color:var(--p)" @click="goGenerate">开始生成</a>
+    </div>
+    <div class="history-grid">
+      <div class="history-card" v-for="h in history" :key="h.id">
+        <img :src="h.url||'https://placehold.co/200x140/ede9fe/6366f1?text='+h.style" alt="">
+        <div class="history-info">
+          <div style="font-weight:600;color:var(--text)">{{ styleLabel(h.style) }}</div>
+          <div>{{ h.created_at?.slice(0,10) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ===== PRICING PAGE ===== -->
+<template v-if="page==='pricing'">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:36px">
+      <h2 style="font-size:30px;font-weight:800;margin-bottom:8px">简单透明定价</h2>
+      <p style="color:var(--muted)">按需充值，随时可用</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="plan" v-for="p in pricingPlans" :key="p.id" :class="{featured:p.featured}">
+        <div style="font-weight:700;font-size:15px;margin-bottom:6px">{{ p.name }}</div>
+        <div class="plan-price">{{ p.price }}<small>/{{ p.unit }}</small></div>
+        <div class="plan-desc">{{ p.desc }}</div>
+        <ul class="plan-feat">
+          <li v-for="f in p.features" :key="f">{{ f }}</li>
+        </ul>
+        <button class="btn btn-primary" style="width:100%;margin-top:14px" @click="buyPlan(p)">{{ p.cta }}</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ===== AUTH MODAL ===== -->
+<div class="overlay" v-if="modal==='auth'" @click.self="modal=null">
+  <div class="modal">
+    <div class="tab-btns">
+      <button class="tab-btn" :class="{active:authTab==='login'}" @click="authTab='login'">登录</button>
+      <button class="tab-btn" :class="{active:authTab==='register'}" @click="authTab='register'">注册</button>
+    </div>
+    <div class="field">
+      <label>手机号</label>
+      <input v-model="form.phone" type="tel" placeholder="请输入手机号" @keyup.enter="submitAuth">
+    </div>
+    <div class="field">
+      <label>密码</label>
+      <input v-model="form.password" type="password" placeholder="请输入密码（6位以上）" @keyup.enter="submitAuth">
+    </div>
+    <div class="field" v-if="authTab==='register'">
+      <label>确认密码</label>
+      <input v-model="form.password2" type="password" placeholder="再次输入密码" @keyup.enter="submitAuth">
+    </div>
+    <button class="btn btn-primary" style="width:100%;padding:12px;font-size:15px" :disabled="loading" @click="submitAuth">
+      {{ loading ? '处理中...' : authTab==='login' ? '登录' : '注册' }}
+    </button>
+    <p v-if="authError" style="color:#ef4444;font-size:13px;margin-top:10px;text-align:center">{{ authError }}</p>
+    <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:12px">
+      {{ authTab==='login' ? '没有账号？' : '已有账号？' }}
+      <a style="color:var(--p)" @click="authTab=authTab==='login'?'register':'login'">{{ authTab==='login' ? '免费注册' : '立即登录' }}</a>
+    </p>
+  </div>
+</div>
+
+<!-- ===== PAYMENT MODAL ===== -->
+<div class="overlay" v-if="modal==='payment'" @click.self="modal=null">
+  <div class="modal">
+    <h2>充值点数</h2>
+    <div style="display:grid;gap:10px">
+      <div v-for="p in chargePlans" :key="p.id" class="plan" style="cursor:pointer" @click="createOrder(p.id)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:700">{{ p.name }}</div>
+            <div style="font-size:13px;color:var(--muted)">{{ p.desc }}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:22px;font-weight:800;color:var(--p)">¥{{ p.price }}</div>
+            <div style="font-size:11px;color:var(--muted)">折合¥{{ (p.price/p.credits).toFixed(1) }}/次</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ORDER PAY MODAL ===== -->
+<div class="overlay" v-if="modal==='order'" @click.self="modal=null">
+  <div class="modal" style="text-align:center">
+    <h2>支付宝支付</h2>
+    <div class="amount">¥{{ order?.amount }}</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:16px">{{ order?.name }}</div>
+    <div class="pay-box">
+      <div style="font-size:42px;margin-bottom:8px">🅰️</div>
+      <div class="pay-hint">正在打开支付宝收银台</div>
+      <div class="pay-hint" style="margin-top:4px;color:var(--p)">支付后会自动返回并刷新点数</div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn btn-primary" style="flex:1" @click="openPayUrl">立即打开</button>
+        <button class="btn btn-ghost" style="flex:1" @click="modal=null">取消</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">订单号：{{ order?.order_id }}</p>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" :class="{error:toastType==='error'}" v-if="toastMsg">{{ toastMsg }}</div>
+
+</div><!-- #app -->
+
+<script>
+const { createApp } = Vue;
+const API_BASE = window.__API__ || (
+  location.protocol === 'file:'
+    ? 'http://127.0.0.1:8000'
+    : (location.hostname === 'localhost' ? 'http://localhost:8000' : '')
+);
+let DEMO_MODE = false; // auto-set after first failed ping
+
+// Demo state (in-memory)
+const _db = { users:{}, pollCount:{} };
+const DEMO_IMGS = {
+  modern:     'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&auto=format',
+  nordic:     'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&auto=format',
+  chinese:    'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&auto=format',
+  luxury:     'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&auto=format',
+  industrial: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format',
+  american:   'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&auto=format',
+};
+
+async function mockReq(path, opts={}) {
+  await new Promise(r=>setTimeout(r,600));
+  const body = opts.body && !(opts.body instanceof FormData) ? JSON.parse(opts.body) : {};
+
+  if (path.includes('/auth/register')) {
+    if (_db.users[body.phone]) throw new Error('手机号已注册');
+    _db.users[body.phone] = {password:body.password, credits:0};
+    return {token:'demo_'+body.phone, credits:0, plan:'free'};
+  }
+  if (path.includes('/auth/login')) {
+    const u = _db.users[body.phone];
+    if (!u || u.password !== body.password) throw new Error('手机号或密码错误');
+    return {token:'demo_'+body.phone, credits:u.credits, plan:'free'};
+  }
+  if (path.includes('/generate/upload')) return {file_id:'demo_'+Date.now()};
+  if (path.match(/\/generate\/demo_\d+$/) && opts.method==='POST') {
+    const id='job_'+Date.now();
+    _db.pollCount[id] = {n:0, style:body.style||'modern'};
+    return {job_id:id, status:'processing'};
+  }
+  if (path.includes('/generate/status/')) {
+    const id=path.split('/').pop();
+    const j=_db.pollCount[id]||{n:0,style:'modern'};
+    j.n++; _db.pollCount[id]=j;
+    if (j.n>=3) return {job_id:id, status:'done', output_url:DEMO_IMGS[j.style]||DEMO_IMGS.modern};
+    return {job_id:id, status:'processing'};
+  }
+  if (path.includes('/generate/history')) return [];
+  if (path.includes('/payment/create')) {
+    const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度套餐',credits:200}}[body.plan_id]||{price:30,name:'演示套餐',credits:10};
+    return {order_id:'DEMO'+Date.now(), amount:plan.price, name:plan.name, pay_url:'https://demo.lingkj.com/pay', pay_method:'page', _credits:plan.credits};
+  }
+  if (path.includes('/payment/status/')) return {status:'paid', credits:10};
+  return {};
+}
+
+async function req(path, opts={}) {
+  if (DEMO_MODE) return mockReq(path, opts);
+  const token = localStorage.getItem('lkj_token');
+  const h = {};
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  if (opts.body && !(opts.body instanceof FormData)) h['Content-Type'] = 'application/json';
+  try {
+    const r = await fetch(API_BASE + path, {...opts, headers:{...h,...(opts.headers||{})}});
+    if (!r.ok) {
+      const e = await r.json().catch(()=>({detail:r.statusText}));
+      if (r.status === 401) {
+        localStorage.removeItem('lkj_token');
+        localStorage.removeItem('lkj_user');
+        if (window._vueApp) {
+          window._vueApp.user = null;
+          window._vueApp.upload = null;
+          window._vueApp.job = null;
+          window._vueApp.loading = false;
+          window._vueApp.authError = '登录状态已失效，请重新登录';
+          window._vueApp.authTab = 'login';
+          window._vueApp.modal = 'auth';
+        }
+        throw new Error('登录状态已失效，请重新登录');
+      }
+      throw new Error(e.detail||'请求失败');
+    }
+    return r.json();
+  } catch(e) {
+    if (e.message==='Failed to fetch'||e.message.includes('Load failed')||e.message.includes('NetworkError')) {
+      DEMO_MODE = true;
+      if (window._vueApp) window._vueApp.isDemoMode = true;
+      return mockReq(path, opts);
+    }
+    throw e;
+  }
+}
+
+const app = createApp({
+  data() {
+    const stored = localStorage.getItem('lkj_user');
+    return {
+      user: stored ? JSON.parse(stored) : null,
+      page: 'home',
+      modal: null,
+      authTab: 'login',
+      authError: '',
+      form: { phone: '', password: '', password2: '' },
+      step: 1,
+      upload: null,       // {previewUrl, fileId}
+      sampleUpload: null,
+      selectedStyle: null,
+      job: null,          // {job_id, status, output_url, error}
+      history: [],
+      order: null,
+      orderPolling: false,
+      loading: false,
+      isDemoMode: false,
+      toastMsg: '',
+      toastType: 'success',
+      progPct: 0,
+      progLabel: '正在分析空间结构...',
+      styles: [
+        {key:'modern',   name:'现代简约', icon:'🪑', bg:'linear-gradient(135deg,#f1f5f9,#e2e8f0)'},
+        {key:'nordic',   name:'北欧风格', icon:'🌿', bg:'linear-gradient(135deg,#fef9ee,#fde68a)'},
+        {key:'chinese',  name:'新中式',   icon:'🏮', bg:'linear-gradient(135deg,#fff7ed,#fed7aa)'},
+        {key:'luxury',   name:'轻奢风',   icon:'💎', bg:'linear-gradient(135deg,#fdf4ff,#e9d5ff)'},
+        {key:'industrial',name:'工业风',  icon:'🔩', bg:'linear-gradient(135deg,#f1f5f9,#cbd5e1)'},
+        {key:'american', name:'美式乡村', icon:'🌻', bg:'linear-gradient(135deg,#f0fdf4,#bbf7d0)'},
+        {key:'cream',    name:'奶油风',   icon:'🍦', bg:'linear-gradient(135deg,#fff7ed,#fde7d3)'},
+        {key:'wabisabi', name:'侘寂风',   icon:'🪨', bg:'linear-gradient(135deg,#f5f5f4,#d6d3d1)'},
+        {key:'wood',     name:'原木风',   icon:'🪵', bg:'linear-gradient(135deg,#fef3c7,#d6ad60)'},
+        {key:'french',   name:'现代法式', icon:'🕯️', bg:'linear-gradient(135deg,#fff1f2,#fecdd3)'},
+        {key:'midcentury', name:'中古风', icon:'🛋️', bg:'linear-gradient(135deg,#f5f5dc,#c4a484)'},
+        {key:'minimal',  name:'极简风',   icon:'⬜', bg:'linear-gradient(135deg,#f8fafc,#e5e7eb)'},
+      ],
+      chargePlans: [
+        {id:'c10',  name:'10次点数包',  desc:'适合偶尔使用',    price:30,  credits:10},
+        {id:'c50',  name:'月度会员',    desc:'每月50次，最划算',price:99,  credits:50},
+        {id:'c200', name:'季度套餐',    desc:'每季200次，送礼佳选',price:269,credits:200},
+      ],
+      pricingPlans: [
+        {id:'c10',  name:'按量充值',   price:'¥30', unit:'10次', desc:'随买随用，无月费',  features:['10次生成额度','高清输出','下载无水印'], cta:'立即充值', featured:false},
+        {id:'c50',  name:'月度会员',   price:'¥99', unit:'月',   desc:'每月50次，折合¥2/次',features:['50次/月','2K高清优先','历史记录6个月'], cta:'开通会员', featured:true},
+        {id:'api',  name:'企业API',    price:'¥999',unit:'月',   desc:'500次/月，API接入', features:['500次/月','REST API','自定义品牌','商务支持'], cta:'联系商务', featured:false},
+      ],
+    }
+  },
+  mounted() {
+    if (this.user && !localStorage.getItem('lkj_token')) {
+      this.user = null;
+      localStorage.removeItem('lkj_user');
+    }
+    this.handlePaymentReturn();
+    this.ensureSampleUpload();
+  },
+  methods: {
+    openAuth(tab) { this.authTab=tab; this.authError=''; this.modal='auth'; },
+    async submitAuth() {
+      if (!this.form.phone || !this.form.password) { this.authError='请填写手机号和密码'; return; }
+      if (this.authTab==='register') {
+        if (this.form.password.length < 6) { this.authError='密码至少6位'; return; }
+        if (this.form.password !== this.form.password2) { this.authError='两次密码输入不一致'; return; }
+      }
+      this.loading=true; this.authError='';
+      try {
+        const d = await req(`/api/auth/${this.authTab}`, {method:'POST', body:JSON.stringify({phone:this.form.phone,password:this.form.password})});
+        localStorage.setItem('lkj_token', d.token);
+        this.user = {phone:this.form.phone, credits:d.credits, plan:d.plan||'free'};
+        localStorage.setItem('lkj_user', JSON.stringify(this.user));
+        this.modal=null;
+        this.toast(this.authTab==='register'?'注册成功':'登录成功');
+        this.page='generate';
+      } catch(e) { this.authError = (e.message==='Failed to fetch'||e.message.includes('Load failed')) ? '无法连接服务器，请确认后端已启动' : e.message; }
+      finally { this.loading=false; }
+    },
+    logout() {
+      localStorage.removeItem('lkj_token'); localStorage.removeItem('lkj_user');
+      this.user=null; this.page='home'; this.toast('已退出登录');
+    },
+    goGenerate() {
+      if (!this.user || !localStorage.getItem('lkj_token')) {
+        this.openAuth('login');
+        return;
+      }
+      this.page='generate';
+      this.step=1;
+    },
+    async goHistory() {
+      if (!this.user) { this.openAuth('login'); return; }
+      this.page='history';
+      try { this.history = await req('/api/generate/history'); } catch {}
+    },
+    async handleFileInput(e) {
+      const file = e.target.files?.[0];
+      await this.handleFile(file);
+      if (e.target) e.target.value = '';
+    },
+    async handleFileDrop(e) { await this.handleFile(e.dataTransfer.files[0]); },
+    async handleFile(file) {
+      if (!file||!file.type.startsWith('image/')) return;
+      if (!this.user || !localStorage.getItem('lkj_token')) {
+        this.openAuth('login');
+        return;
+      }
+      this.job = null;
+      this.progPct = 0;
+      this.progLabel = '正在分析空间结构...';
+      this.upload = {previewUrl: URL.createObjectURL(file), fileId:null};
+      this.loading=true;
+      try {
+        const fd=new FormData(); fd.append('file',file);
+        const d = await req('/api/generate/upload', {method:'POST', body:fd});
+        this.upload.fileId = d.file_id;
+        this.toast('图片上传成功');
+      } catch(e) { this.toast(e.message,'error'); this.upload=null; }
+      finally { this.loading=false; }
+    },
+    useSample() {
+      if (!this.user) { this.openAuth('register'); return; }
+      this.job = null;
+      this.progPct = 0;
+      this.progLabel = '正在分析空间结构...';
+      if (!this.sampleUpload) {
+        this.toast('示例图不存在，请直接上传本地图片', 'error');
+        return;
+      }
+      this.upload = {...this.sampleUpload};
+      this.toast('已加载示例房间');
+    },
+    resetGenerationState() {
+      this.upload = null;
+      this.job = null;
+      this.progPct = 0;
+      this.progLabel = '正在分析空间结构...';
+      if (this.$refs.fi) this.$refs.fi.value = '';
+    },
+    async doGenerate() {
+      if (!this.user) { this.openAuth('register'); return; }
+      if (!this.upload?.fileId) { this.toast('请先上传房间原图','error'); return; }
+      if (!this.selectedStyle) { this.toast('请先选择装修风格','error'); return; }
+      if ((this.user.credits||0) < 1) { this.modal='payment'; return; }
+      this.loading=true; this.job={status:'processing'};
+      this.startProgAnim();
+      try {
+        const d = await req(`/api/generate/${this.upload.fileId}`, {method:'POST', body:JSON.stringify({style:this.selectedStyle, quality:'hd'})});
+        this.job=d;
+        if (d.status==='processing'||d.status==='pending') await this.pollJob(d.job_id);
+        else { this.progPct=100; this.stopProgAnim(); }
+        if (this.job.status==='done') {
+          this.user.credits = Math.max(0,(this.user.credits||0)-1);
+          localStorage.setItem('lkj_user', JSON.stringify(this.user));
+          this.toast('效果图生成完成 🎉');
+        }
+      } catch(e) { this.toast(e.message,'error'); this.job={status:'failed',error:e.message}; }
+      finally { this.loading=false; this.stopProgAnim(); }
+    },
+    async pollJob(jobId) {
+      const labels=['正在分析空间结构...','提取房型特征...','应用风格迁移...','高清渲染中...','输出效果图...'];
+      let i=0;
+      while(true) {
+        await new Promise(r=>setTimeout(r,2000));
+        try {
+          const d = await req(`/api/generate/status/${jobId}`);
+          this.job=d; this.progLabel=labels[Math.min(i++,labels.length-1)]; this.progPct=Math.min(95,i*20);
+          if(d.status==='done'||d.status==='failed') { this.progPct=100; break; }
+        } catch(e) { this.job={status:'failed',error:e.message}; break; }
+      }
+    },
+    _progTimer: null,
+    startProgAnim() {
+      this.progPct=0; this.progLabel='正在分析空间结构...';
+      this._progTimer=setInterval(()=>{ if(this.progPct<85) this.progPct+=Math.random()*3; },500);
+    },
+    stopProgAnim() { clearInterval(this._progTimer); },
+    async createOrder(planId) {
+      if (!this.user) { this.modal=null; this.openAuth('register'); return; }
+      this.loading=true;
+      try {
+        const d = await req('/api/payment/create', {method:'POST', body:JSON.stringify({plan_id:planId})});
+        this.order=d; this.modal='order';
+        this.openPayUrl();
+      } catch(e) { this.toast(e.message,'error'); }
+      finally { this.loading=false; }
+    },
+    openPayUrl() {
+      if (!this.order?.pay_url) return;
+      const url = this.order.pay_url;
+      const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      if (mobile) {
+        window.location.href = url;
+      } else {
+        const win = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!win) window.location.href = url;
+      }
+      this.pollPayment(this.order.order_id);
+    },
+    async pollPayment(orderId) {
+      if (this.orderPolling) return;
+      this.orderPolling = true;
+      for(let i=0;i<60;i++) {
+        await new Promise(r=>setTimeout(r,3000));
+        try {
+          const d = await req(`/api/payment/status/${orderId}`);
+          if(d.status==='paid') {
+            this.user.credits = d.credits;
+            localStorage.setItem('lkj_user', JSON.stringify(this.user));
+            this.modal=null; this.order=null;
+            this.toast(`充值成功！当前余额 ${d.credits} 次`);
+            this.orderPolling = false;
+            return;
+          }
+        } catch {}
+      }
+      this.orderPolling = false;
+    },
+    handlePaymentReturn() {
+      const params = new URLSearchParams(location.search);
+      const orderId = params.get('order_id') || params.get('orderId');
+      if (!orderId) return;
+      if (this.user) {
+        this.modal = 'order';
+        this.order = this.order || { order_id: orderId, amount: '', name: '支付宝支付' };
+        this.pollPayment(orderId);
+      }
+      params.delete('payment');
+      params.delete('order_id');
+      params.delete('orderId');
+      const next = params.toString();
+      history.replaceState({}, '', `${location.pathname}${next ? `?${next}` : ''}${location.hash || ''}`);
+    },
+    buyPlan(p) { if(p.id==='api') { this.toast('请联系商务：business@lingkj.com'); return; } this.modal=null; this.createOrder(p.id); },
+    async ensureSampleUpload() {
+      if (this.sampleUpload) return this.sampleUpload;
+      try {
+        const r = await fetch('/uploads/3b165889-9943-4472-9c3e-ddaa94290f62.jpg');
+        if (!r.ok) throw new Error('sample missing');
+        const blob = await r.blob();
+        this.sampleUpload = {
+          previewUrl: URL.createObjectURL(blob),
+          fileId: '3b165889-9943-4472-9c3e-ddaa94290f62.jpg'
+        };
+        return this.sampleUpload;
+      } catch {
+        this.sampleUpload = null;
+        return null;
+      }
+    },
+    styleLabel(key) { return this.styles.find(s=>s.key===key)?.name || key; },
+    toast(msg, type='success') {
+      this.toastMsg=msg; this.toastType=type;
+      setTimeout(()=>this.toastMsg='', 3000);
+    },
+  }
+});
+window._vueApp = app.mount('#app');
+</script>
+</body>
+</html>
