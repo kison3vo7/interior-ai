@@ -38,9 +38,6 @@ DATA_ROOT.mkdir(parents=True, exist_ok=True)
 ARK_API_KEY  = os.getenv("ARK_API_KEY", "")
 JWT_SECRET   = os.getenv("JWT_SECRET", "dev-secret")
 ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-260128")
-ARK_EDIT_MODEL = os.getenv("ARK_EDIT_MODEL", ARK_IMAGE_MODEL)
-ARK_GENERATION_MODEL = os.getenv("ARK_GENERATION_MODEL", "doubao-seedream-4-0-250828")
-ARK_IMAGE_EDIT_ENABLED = os.getenv("ARK_IMAGE_EDIT_ENABLED", "0").strip().lower() not in {"0", "false", "off", "no"}
 ALIPAY_APP_ID = os.getenv("ALIPAY_APP_ID", "")
 ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")
 ALIPAY_PUBLIC_KEY = os.getenv("ALIPAY_PUBLIC_KEY", "")
@@ -58,8 +55,6 @@ INDEX_HTML = ROOT_DIR / "index.html"
 ALIPAY_PRECREATE_ALLOWED = True
 TEST_ACCOUNT_PHONE = "15251872890"
 TEST_ACCOUNT_MIN_CREDITS = 500
-ARK_IMAGE_EDIT_ALLOWED = ARK_IMAGE_EDIT_ENABLED
-
 app = FastAPI(title="灵感空间AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -587,12 +582,11 @@ def _room_prompt(style_name: str, style_detail: str) -> str:
         f"这是一个室内图像编辑任务，请基于上传房间照片直接生成{style_name}装修效果图。"
         "把上传图当作底图而不是灵感图，必须尽最大程度保留原图的空间结构、墙体位置、门窗位置、天花板形状、地面边界、镜头机位、透视关系、房间比例和采光方向，"
         "不要重构成另一套房，不要移动窗户门洞，不要新增或删减房间，不要改变整体构图。"
-        "如果原图是大开间或毛坯房，必须保留大开间属性，不要新增卧室、不要新增小房间、不要新增隔断、不要新增厨房岛台或任何会改变平面功能分区的大体量结构。"
         f"只允许在原空间内替换材质、墙面、地面、吊顶细节、家具、灯具、窗帘、装饰画和软装，整体风格要求：{style_detail}。"
         "输出必须像真实设计师在原图上做的装修改造图，保留原房间特征，细节自然，避免夸张结构变化。"
     )
 
-def build_doubao_generation_payload(input_path: str, style: str, quality: str) -> dict:
+def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
     style_name = STYLES.get(style, "现代简约")
     style_detail = STYLE_DETAILS.get(style, STYLE_DETAILS["modern"])
     size = resolve_output_size(input_path, quality)
@@ -600,7 +594,7 @@ def build_doubao_generation_payload(input_path: str, style: str, quality: str) -
     if not img_data_uri:
         raise RuntimeError("未读取到用户上传的原始房间图片，无法生成参考设计图")
     payload = {
-        "model": ARK_GENERATION_MODEL,
+        "model": ARK_IMAGE_MODEL,
         "prompt": _room_prompt(style_name, style_detail),
         "n": 1,
         "size": size,
@@ -609,65 +603,24 @@ def build_doubao_generation_payload(input_path: str, style: str, quality: str) -
     }
     return payload
 
-def build_doubao_edit_payload(input_path: str, style: str, quality: str) -> dict:
-    style_name = STYLES.get(style, "现代简约")
-    style_detail = STYLE_DETAILS.get(style, STYLE_DETAILS["modern"])
-    size = resolve_output_size(input_path, quality)
-    img_data_uri = _image_data_uri(input_path)
-    if not img_data_uri:
-        raise RuntimeError("未读取到用户上传的原始房间图片，无法进行编辑生成")
-    return {
-        "model": ARK_EDIT_MODEL,
-        "prompt": _room_prompt(style_name, style_detail),
-        "image": img_data_uri,
-        "n": 1,
-        "size": size,
-        "response_format": "url",
-    }
-
-async def _call_ark_image_api(client: httpx.AsyncClient, endpoint: str, payload: dict, label: str) -> str:
-    r = await client.post(
-        endpoint,
-        headers={"Authorization": f"Bearer {ARK_API_KEY}", "Content-Type": "application/json"},
-        json=payload,
-    )
-    if not r.is_success:
-        detail = r.text.strip() or f"HTTP {r.status_code}"
-        raise RuntimeError(f"{label}错误: {detail}")
-    data = r.json()
-    items = data.get("data") or []
-    if not items or not items[0].get("url"):
-        raise RuntimeError(f"{label}返回异常: {json.dumps(data, ensure_ascii=False)}")
-    return items[0]["url"]
-
 async def call_doubao(input_path: str, style: str, quality: str) -> str:
-    global ARK_IMAGE_EDIT_ALLOWED
+    payload = build_doubao_payload(input_path, style, quality)
+    headers = {"Authorization": f"Bearer {ARK_API_KEY}", "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=120) as client:
-        if ARK_IMAGE_EDIT_ALLOWED:
-            edit_payload = build_doubao_edit_payload(input_path, style, quality)
-            print(f"[doubao] editing model={edit_payload['model']} style={style} size={edit_payload['size']} endpoint=/images/edits")
-            try:
-                return await _call_ark_image_api(
-                    client,
-                    "https://ark.cn-beijing.volces.com/api/v3/images/edits",
-                    edit_payload,
-                    "豆包编辑接口",
-                )
-            except Exception as edit_error:
-                print(f"[doubao] edits fallback style={style} reason={edit_error}", flush=True)
-                if "HTTP 404" in str(edit_error):
-                    ARK_IMAGE_EDIT_ALLOWED = False
-                    print("[doubao] disable edits for current process because endpoint/model is unavailable", flush=True)
-
-        generation_payload = build_doubao_generation_payload(input_path, style, quality)
-        ref_count = len(generation_payload.get("reference_images", []))
-        print(f"[doubao] generation fallback model={generation_payload['model']} style={style} size={generation_payload['size']} reference_images={ref_count} endpoint=/images/generations")
-        return await _call_ark_image_api(
-            client,
+        ref_count = len(payload.get("reference_images", []))
+        print(f"[doubao] generating model={payload['model']} style={style} size={payload['size']} image={'image' in payload} reference_images={ref_count}")
+        r2 = await client.post(
             "https://ark.cn-beijing.volces.com/api/v3/images/generations",
-            generation_payload,
-            "豆包生成接口",
+            headers=headers,
+            json=payload,
         )
+        if not r2.is_success:
+            raise RuntimeError(f"豆包API错误: {r2.text}")
+        data = r2.json()
+        items = data.get("data") or []
+        if not items or not items[0].get("url"):
+            raise RuntimeError(f"豆包API返回异常: {json.dumps(data, ensure_ascii=False)}")
+        return items[0]["url"]
 
 async def process_job(job_id: str, input_path: str, style: str, quality: str):
     db = get_db()
