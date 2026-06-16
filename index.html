@@ -143,8 +143,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   <div class="nav-links">
     <a @click="page='home'">首页</a>
     <a @click="goGenerate">在线生成</a>
-    <a @click="scrollToSection('service-info')">服务说明</a>
-    <a @click="scrollToSection('contact-info')">联系我们</a>
     <a @click="goHistory" v-if="user">历史记录</a>
   </div>
   <div class="nav-right">
@@ -249,66 +247,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
     </div>
   </section>
 
-  <section class="section section-light" id="service-info">
-    <div class="section-title">
-      <h2>服务说明、退款规则与经营信息</h2>
-      <p>以下内容用于说明本站实际经营内容、支付购买方式、售后规则与经营主体信息，方便用户了解后再下单。</p>
-    </div>
-    <div class="info-grid">
-      <div class="info-panel">
-        <h3>服务说明</h3>
-        <ul>
-          <li>服务内容：AI 家装效果图生成、风格切换、高清图片下载。</li>
-          <li>交付形式：用户支付后获得生成次数，在网页端上传照片并在线生成结果。</li>
-          <li>适用范围：仅用于装修参考与灵感展示，不替代专业施工图、结构改造图与水电图。</li>
-          <li>使用方式：注册账号后可领取一次体验次数，充值或开通会员后继续使用。</li>
-        </ul>
-        <h3 style="margin-top:20px">退款规则</h3>
-        <ul>
-          <li>未使用的点数包，在支付后 24 小时内可联系客服申请退款。</li>
-          <li>已消耗的生成次数、已完成的图片生成服务，不支持退款。</li>
-          <li>因系统故障导致连续生成失败且未交付结果的订单，可联系客服核实后补发次数或退款。</li>
-        </ul>
-        <h3 style="margin-top:20px">隐私政策摘要</h3>
-        <ul>
-          <li>上传照片仅用于生成当前装修效果图，不会对外公开展示用户原始照片。</li>
-          <li>用户注册手机号仅用于登录验证、订单查询与售后联系。</li>
-          <li>支付过程通过支付宝官方收银台完成，本站不存储用户支付密码等敏感金融信息。</li>
-        </ul>
-      </div>
-      <div class="info-panel" id="contact-info">
-        <h3>经营主体信息</h3>
-        <div class="info-row"><strong>网站名称</strong><span>灵感空间AI</span></div>
-        <div class="info-row"><strong>经营内容</strong><span>在线 AI 家装效果图生成服务、点数包充值、会员开通</span></div>
-        <div class="info-row"><strong>支付方式</strong><span>支付宝电脑网站支付、支付宝手机网站支付</span></div>
-        <div class="info-row"><strong>访问地址</strong><span>https://interior-ai-aemn.onrender.com</span></div>
-        <div class="info-row"><strong>客服邮箱</strong><span>support@lingkj.com</span></div>
-        <div class="info-row"><strong>客服时间</strong><span>周一至周日 09:00 - 21:00</span></div>
-        <div class="info-row"><strong>售后处理</strong><span>通过站内订单号和注册手机号核实后处理退款、补发次数与支付异常问题</span></div>
-        <div class="info-row"><strong>主体资料</strong><span>公司主体信息、经营地址与资质文件以支付宝提交材料和审核页展示信息为准</span></div>
-        <div style="margin-top:18px;background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:16px">
-          <div style="font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text)">审核补料说明</div>
-          <div style="font-size:13px;color:var(--muted)">本站提供真实在线家装效果图生成服务，页面已展示商品内容、购买入口、价格套餐、使用流程、支付方式、退款规则、客服联系方式与经营说明，可直接用于支付宝网站支付审核截图。</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section" style="background:#eef2ff">
-    <div class="audit-strip">
-      <div>
-        <h2 style="font-size:28px;font-weight:800;margin-bottom:10px">现在就可以完成购买闭环</h2>
-        <p>用户进入首页后可查看服务介绍、价格与售后规则，注册账号后领取一次免费体验，再通过充值或会员开通方式获得更多生成次数，支付完成后立即回到网页继续生成。</p>
-      </div>
-      <div class="audit-list">
-        <div class="audit-item">1. 首页可见品牌名、域名、服务内容</div>
-        <div class="audit-item">2. 套餐与支付入口清晰可见</div>
-        <div class="audit-item">3. 服务说明、退款规则、联系方式完整</div>
-        <div class="audit-item">4. 支付后返回站内继续使用</div>
-      </div>
-    </div>
-  </section>
-
   <footer class="site-footer">
     <div class="inner">
       <div class="top">
@@ -316,9 +254,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
           <div class="brand">灵感空间AI</div>
           <div class="copy">上传房间照片，在线生成家装效果图与风格方案。</div>
         </div>
-        <div class="copy">网站地址：https://interior-ai-aemn.onrender.com</div>
       </div>
-      <div class="copy">服务内容：AI 家装效果图生成服务 · 点数包充值 · 会员开通 · 客服邮箱：support@lingkj.com</div>
     </div>
   </footer>
 </template>
