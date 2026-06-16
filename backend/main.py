@@ -172,6 +172,11 @@ def home():
         return resp
     return HTMLResponse("<h1>灵感空间AI</h1><p>Frontend not found.</p>", status_code=200)
 
+@app.get("/favicon.ico")
+def favicon():
+    # Return a tiny empty icon instead of a 404 to keep browser console clean.
+    return Response(content=b"", media_type="image/x-icon")
+
 def _site_base_url() -> str:
     for value in (PUBLIC_SITE_URL, NEXT_PUBLIC_BASE_URL):
         if value:
