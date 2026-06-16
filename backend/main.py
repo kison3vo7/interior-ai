@@ -40,7 +40,7 @@ JWT_SECRET   = os.getenv("JWT_SECRET", "dev-secret")
 ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-260128")
 ARK_EDIT_MODEL = os.getenv("ARK_EDIT_MODEL", ARK_IMAGE_MODEL)
 ARK_GENERATION_MODEL = os.getenv("ARK_GENERATION_MODEL", "doubao-seedream-4-0-250828")
-ARK_IMAGE_EDIT_ENABLED = os.getenv("ARK_IMAGE_EDIT_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
+ARK_IMAGE_EDIT_ENABLED = os.getenv("ARK_IMAGE_EDIT_ENABLED", "0").strip().lower() not in {"0", "false", "off", "no"}
 ALIPAY_APP_ID = os.getenv("ALIPAY_APP_ID", "")
 ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")
 ALIPAY_PUBLIC_KEY = os.getenv("ALIPAY_PUBLIC_KEY", "")
@@ -587,6 +587,7 @@ def _room_prompt(style_name: str, style_detail: str) -> str:
         f"这是一个室内图像编辑任务，请基于上传房间照片直接生成{style_name}装修效果图。"
         "把上传图当作底图而不是灵感图，必须尽最大程度保留原图的空间结构、墙体位置、门窗位置、天花板形状、地面边界、镜头机位、透视关系、房间比例和采光方向，"
         "不要重构成另一套房，不要移动窗户门洞，不要新增或删减房间，不要改变整体构图。"
+        "如果原图是大开间或毛坯房，必须保留大开间属性，不要新增卧室、不要新增小房间、不要新增隔断、不要新增厨房岛台或任何会改变平面功能分区的大体量结构。"
         f"只允许在原空间内替换材质、墙面、地面、吊顶细节、家具、灯具、窗帘、装饰画和软装，整体风格要求：{style_detail}。"
         "输出必须像真实设计师在原图上做的装修改造图，保留原房间特征，细节自然，避免夸张结构变化。"
     )

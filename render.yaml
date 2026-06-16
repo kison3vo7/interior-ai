@@ -13,6 +13,10 @@ services:
         sync: false
       - key: ARK_IMAGE_MODEL
         value: doubao-seedream-5-0-260128
+      - key: ARK_GENERATION_MODEL
+        value: doubao-seedream-4-0-250828
+      - key: ARK_IMAGE_EDIT_ENABLED
+        value: "0"
       - key: ALIPAY_APP_ID
         sync: false
       - key: ALIPAY_PRIVATE_KEY
