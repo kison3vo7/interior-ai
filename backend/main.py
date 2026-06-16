@@ -183,6 +183,17 @@ def _site_base_url() -> str:
 def _alipay_enabled() -> bool:
     return all([ALIPAY_APP_ID, ALIPAY_PRIVATE_KEY, ALIPAY_PUBLIC_KEY, ALIPAY_NOTIFY_URL])
 
+def _mock_payment_allowed() -> bool:
+    base = _site_base_url().lower()
+    if base.startswith("http://127.0.0.1") or base.startswith("http://localhost"):
+        return True
+    env = os.getenv("APP_ENV", "").strip().lower()
+    return env in {"dev", "development", "local"}
+
+def _require_mock_payment_allowed() -> None:
+    if not _mock_payment_allowed():
+        raise HTTPException(404, "订单不存在")
+
 def _normalize_pem(raw: str, kind: str) -> str:
     value = (raw or "").strip().strip('"').strip("'").replace("\\n", "\n")
     if "BEGIN" in value:
@@ -920,6 +931,7 @@ def alipay_checkout(order_id: str, request: Request):
 
 @app.get("/api/payment/mock/{order_id}", response_class=HTMLResponse)
 def mock_checkout(order_id: str):
+    _require_mock_payment_allowed()
     html = f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -944,6 +956,7 @@ def mock_checkout(order_id: str):
 
 @app.get("/api/payment/mock-success/{order_id}", response_class=HTMLResponse)
 def mock_checkout_success(order_id: str):
+    _require_mock_payment_allowed()
     _mark_order_paid(order_id)
     return HTMLResponse(
         f"<script>window.location.href='{escape(_payment_return_url(order_id))}&status=paid';</script>",
