@@ -108,7 +108,9 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .field{margin-bottom:14px}
 .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
 .field input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:.15s}
+.field textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:.15s;min-height:88px;resize:vertical;font-family:inherit}
 .field input:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.field textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
 /* PROGRESS */
 .prog-wrap{margin:12px 0}
 .prog-label{font-size:13px;color:var(--muted);text-align:center;margin-bottom:6px}
@@ -144,6 +146,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
     <a @click="page='home'">首页</a>
     <a @click="goGenerate">在线生成</a>
     <a @click="goHistory" v-if="user">历史记录</a>
+    <a @click="goReview" v-if="isReviewer">审核订单</a>
   </div>
   <div class="nav-right">
     <template v-if="user">
@@ -257,6 +260,38 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       </div>
     </div>
   </footer>
+</template>
+
+<!-- ===== REVIEW PAGE ===== -->
+<template v-if="page==='review'">
+  <div class="container">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <div>
+          <h2 style="font-size:24px;font-weight:800">付款审核</h2>
+          <p style="color:var(--muted);font-size:14px">仅管理员账号可见，用于审核用户提交的付款截图并发放次数。</p>
+        </div>
+        <button class="btn btn-ghost" @click="loadReviewOrders">刷新</button>
+      </div>
+      <div v-if="!reviewOrders.length" style="color:var(--muted);font-size:14px">当前没有待审核订单</div>
+      <div v-else style="display:grid;gap:12px">
+        <div v-for="item in reviewOrders" :key="item.order_id" class="plan" style="cursor:default">
+          <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap">
+            <div style="flex:1;min-width:220px">
+              <div style="font-weight:800;font-size:16px">{{ item.order_id }}</div>
+              <div style="font-size:14px;color:var(--muted)">手机号：{{ item.phone }} · 套餐：{{ item.plan_id }} · 金额：¥{{ item.amount }} · 次数：{{ item.credits }}</div>
+              <div style="font-size:13px;color:var(--muted);margin-top:6px">提交时间：{{ item.payment_submitted_at || '未提交' }}</div>
+              <div v-if="item.payment_note" style="font-size:13px;color:var(--text);margin-top:6px">备注：{{ item.payment_note }}</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <a v-if="item.payment_proof_url" class="btn btn-ghost" :href="item.payment_proof_url" target="_blank" rel="noopener noreferrer">查看截图</a>
+              <button class="btn btn-primary" @click="approveReviewOrder(item.order_id)">审核通过</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <!-- ===== GENERATE PAGE ===== -->
@@ -452,7 +487,24 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
     <div class="amount">¥{{ order?.amount }}</div>
     <div style="font-size:14px;color:var(--muted);margin-bottom:16px">{{ order?.name }}</div>
     <div class="pay-box">
-      <template v-if="order?.qrCodeDataUrl">
+      <template v-if="order?.manualReview">
+        <div class="pay-hint" style="margin-top:0;color:var(--p)">请先使用支付宝完成转账，再上传付款截图等待审核到账</div>
+        <div class="pay-qr-wrap" v-if="order?.qrCodeDataUrl">
+          <img class="pay-qr-img" :src="order.qrCodeDataUrl" alt="支付宝收款二维码">
+        </div>
+        <div class="pay-hint">{{ order?.manualLabel || '支付宝扫码转账' }}</div>
+        <div class="field" style="text-align:left;margin-top:16px">
+          <label>付款备注（可选）</label>
+          <textarea v-model="paymentProofNote" placeholder="可填写付款时间、尾号或备注，方便核对"></textarea>
+        </div>
+        <div class="field" style="text-align:left">
+          <label>上传付款截图</label>
+          <input type="file" accept="image/*" @change="handlePaymentProofFileInput">
+        </div>
+        <div v-if="paymentProofFileName" class="pay-hint" style="color:var(--text)">已选择：{{ paymentProofFileName }}</div>
+        <div v-if="order?.status==='awaiting_review'" class="pay-hint" style="color:#b45309">付款凭证已提交，等待人工审核到账</div>
+      </template>
+      <template v-else-if="order?.qrCodeDataUrl">
         <div class="pay-hint" style="margin-top:0;color:var(--p)">请打开支付宝扫一扫下方二维码</div>
         <div class="pay-qr-wrap">
           <img class="pay-qr-img" :src="order.qrCodeDataUrl" alt="支付宝支付二维码">
@@ -470,9 +522,9 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
         <div style="font-size:42px;margin-bottom:8px">🅰️</div>
         <div class="pay-hint">正在打开支付宝收银台</div>
       </template>
-      <div class="pay-hint" style="margin-top:4px;color:var(--p)">支付后会自动返回并刷新点数</div>
+      <div class="pay-hint" style="margin-top:4px;color:var(--p)">{{ order?.manualReview ? '审核通过后会自动到账并刷新点数' : '支付后会自动返回并刷新点数' }}</div>
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-primary" style="flex:1" @click="openPayUrl">{{ order?.qrCodeDataUrl ? '电脑端付款' : '立即打开' }}</button>
+        <button class="btn btn-primary" style="flex:1" @click="order?.manualReview ? submitPaymentProof() : openPayUrl()">{{ order?.manualReview ? '提交付款截图' : (order?.qrCodeDataUrl ? '电脑端付款' : '立即打开') }}</button>
         <button class="btn btn-ghost" style="flex:1" @click="closeOrderModal">取消</button>
       </div>
     </div>
@@ -537,7 +589,7 @@ async function mockReq(path, opts={}) {
   }
   if (path.includes('/generate/history')) return [];
   if (path.includes('/payment/create')) {
-    const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度套餐',credits:200},c500:{price:999,name:'企业会员',credits:500}}[body.plan_id]||{price:30,name:'10次点数包',credits:10};
+    const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度会员',credits:200},c500:{price:999,name:'企业会员',credits:500}}[body.plan_id]||{price:30,name:'10次点数包',credits:10};
     const token = (opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
     const phone = token.startsWith('Bearer demo_') ? token.replace('Bearer demo_','') : '';
     const orderId = 'DEMO'+Date.now();
@@ -555,6 +607,37 @@ async function mockReq(path, opts={}) {
       }
     }
     return {status:'paid', credits:_db.users[order.phone]?.credits || order.credits};
+  }
+  if (path.includes('/payment/proof/') && opts.method === 'POST') {
+    const orderId = path.split('/').pop();
+    const order = _db.orders[orderId];
+    if (!order) throw new Error('订单不存在');
+    order.status = 'awaiting_review';
+    return {ok:true, status:'awaiting_review', payment_proof_url:'/uploads/payment-proofs/demo.jpg'};
+  }
+  if (path.includes('/payment/review-list')) {
+    return Object.entries(_db.orders)
+      .filter(([, order]) => order.status === 'awaiting_review')
+      .map(([order_id, order]) => ({
+        order_id,
+        phone: order.phone,
+        plan_id: 'c10',
+        amount: 30,
+        credits: order.credits,
+        status: order.status,
+        payment_proof_url: '/uploads/payment-proofs/demo.jpg',
+        payment_note: '',
+        payment_submitted_at: new Date().toISOString(),
+      }));
+  }
+  if (path.includes('/payment/review/approve') && opts.method === 'POST') {
+    const order = _db.orders[body.order_id];
+    if (!order) throw new Error('订单不存在');
+    order.status = 'paid';
+    if (order.phone && _db.users[order.phone]) {
+      _db.users[order.phone].credits += order.credits;
+    }
+    return {ok:true, status:'paid'};
   }
   return {};
 }
@@ -617,6 +700,10 @@ const app = createApp({
       history: [],
       order: null,
       orderPolling: false,
+      paymentProofFile: null,
+      paymentProofFileName: '',
+      paymentProofNote: '',
+      reviewOrders: [],
       loading: false,
       isDemoMode: false,
       toastMsg: '',
@@ -640,12 +727,13 @@ const app = createApp({
       chargePlans: [
         {id:'c10',  name:'10次点数包',  desc:'适合偶尔使用',    price:30,  credits:10},
         {id:'c50',  name:'月度会员',    desc:'每月50次，最划算',price:99,  credits:50},
-        {id:'c200', name:'季度套餐',    desc:'每季200次，送礼佳选',price:269,credits:200},
+        {id:'c200', name:'季度会员',    desc:'每季200次，适合持续装修参考',price:269,credits:200},
         {id:'c500', name:'企业会员',    desc:'每月500次，适合高频使用',price:999,credits:500},
       ],
       pricingPlans: [
         {id:'c10',  name:'按量充值',   price:'¥30', unit:'10次', desc:'随买随用，无月费',  features:['10次生成额度','高清输出','下载无水印'], cta:'立即充值', featured:false},
         {id:'c50',  name:'月度会员',   price:'¥99', unit:'月',   desc:'每月50次，折合¥2/次',features:['50次/月','2K高清优先','历史记录6个月'], cta:'开通会员', featured:true},
+        {id:'c200', name:'季度会员',   price:'¥269',unit:'季',   desc:'每季200次，适合持续比稿与多空间设计', features:['200次/季','2K高清优先','历史记录9个月','多空间连续生成'], cta:'开通会员', featured:false},
         {id:'c500', name:'企业会员',   price:'¥999',unit:'月',   desc:'每月500次，适合高频团队使用', features:['500次/月','高清优先生成','历史记录12个月','优先支持服务'], cta:'开通会员', featured:false},
       ],
       caseStudies: [
@@ -655,6 +743,11 @@ const app = createApp({
         {title:'书房与次卧改造', desc:'用于小空间重构与功能优化，适合书房、儿童房、次卧等多种家装场景。', image:'https://images.unsplash.com/photo-1494526585095-c41746248156?w=900&auto=format&fit=crop'},
       ],
     }
+  },
+  computed: {
+    isReviewer() {
+      return this.user?.phone === '15251872890';
+    },
   },
   mounted() {
     this.restoreSavedAccount();
@@ -677,6 +770,9 @@ const app = createApp({
         pay_url: this.order.pay_url || '',
         embedPayUrl: this.order.embedPayUrl || '',
         qrCodeDataUrl: this.order.qrCodeDataUrl || '',
+        manualReview: !!this.order.manualReview,
+        manualLabel: this.order.manualLabel || '',
+        status: this.order.status || 'pending',
       }));
     },
     clearPendingOrder() {
@@ -733,6 +829,9 @@ const app = createApp({
     closeOrderModal() {
       this.modal = null;
       this.order = null;
+      this.paymentProofFile = null;
+      this.paymentProofFileName = '';
+      this.paymentProofNote = '';
       this.clearPendingOrder();
     },
     async refreshCurrentUser() {
@@ -762,6 +861,9 @@ const app = createApp({
           pay_url: '',
           embedPayUrl: '',
           qrCodeDataUrl: '',
+          manualReview: false,
+          manualLabel: '',
+          status: 'pending',
           ...saved,
         };
         this.modal = 'order';
@@ -822,6 +924,32 @@ const app = createApp({
       if (!this.user) { this.openAuth('login'); return; }
       this.page='history';
       try { this.history = await req('/api/generate/history'); } catch {}
+    },
+    async goReview() {
+      if (!this.isReviewer) return;
+      this.page='review';
+      await this.loadReviewOrders();
+    },
+    async loadReviewOrders() {
+      if (!this.isReviewer) return;
+      try {
+        this.reviewOrders = await req('/api/payment/review-list');
+      } catch (e) {
+        this.toast(e.message, 'error');
+      }
+    },
+    async approveReviewOrder(orderId) {
+      if (!this.isReviewer) return;
+      try {
+        await req('/api/payment/review/approve', {
+          method:'POST',
+          body:JSON.stringify({ order_id: orderId }),
+        });
+        this.toast('审核通过，次数已到账');
+        await this.loadReviewOrders();
+      } catch (e) {
+        this.toast(e.message, 'error');
+      }
     },
     async handleFileInput(e) {
       const file = e.target.files?.[0];
@@ -927,13 +1055,47 @@ const app = createApp({
           ...d,
           qrCodeDataUrl: d.qr_image_url || (d.qr_code && /^https:\/\/(?:mobilecodec\.alipay\.com\/show\.htm\?code=|qr\.alipay\.com\/)/i.test(d.qr_code) ? this.buildQrDataUrl(d.qr_code) : ''),
           embedPayUrl: d.embed_pay_url || '',
+          manualReview: !!d.manual_review,
+          manualLabel: d.manual_label || '',
+          status: 'pending',
         };
         this.modal='order';
         this.persistPendingOrder();
-        if (!this.order.qrCodeDataUrl && !this.order.embedPayUrl) this.openPayUrl();
-        else this.pollPayment(this.order.order_id);
+        if (this.order.manualReview) {
+          this.pollPayment(this.order.order_id);
+        } else if (!this.order.qrCodeDataUrl && !this.order.embedPayUrl) {
+          this.openPayUrl();
+        } else {
+          this.pollPayment(this.order.order_id);
+        }
       } catch(e) { this.toast(e.message,'error'); }
       finally { this.loading=false; }
+    },
+    handlePaymentProofFileInput(e) {
+      const file = e.target.files?.[0];
+      this.paymentProofFile = file || null;
+      this.paymentProofFileName = file?.name || '';
+    },
+    async submitPaymentProof() {
+      if (!this.order?.order_id) return;
+      if (!this.paymentProofFile) {
+        this.toast('请先上传付款截图', 'error');
+        return;
+      }
+      this.loading = true;
+      try {
+        const fd = new FormData();
+        fd.append('file', this.paymentProofFile);
+        fd.append('note', this.paymentProofNote || '');
+        const d = await req(`/api/payment/proof/${this.order.order_id}`, { method:'POST', body:fd });
+        this.order.status = d.status || 'awaiting_review';
+        this.persistPendingOrder();
+        this.toast('付款截图已提交，等待审核到账');
+      } catch (e) {
+        this.toast(e.message, 'error');
+      } finally {
+        this.loading = false;
+      }
     },
     buildQrDataUrl(text) {
       if (!text) return '';
@@ -963,6 +1125,10 @@ const app = createApp({
         await new Promise(r=>setTimeout(r,3000));
         try {
           const d = await req(`/api/payment/status/${orderId}`);
+          if (this.order && this.order.order_id === orderId && d.status) {
+            this.order.status = d.status;
+            this.persistPendingOrder();
+          }
           if(d.status==='paid') {
             this.user.credits = d.credits;
             localStorage.setItem('lkj_user', JSON.stringify(this.user));
@@ -988,6 +1154,9 @@ const app = createApp({
           pay_url: '',
           embedPayUrl: '',
           qrCodeDataUrl: '',
+          manualReview: false,
+          manualLabel: '',
+          status: 'pending',
           ...(this.order || {}),
           order_id: orderId,
         };

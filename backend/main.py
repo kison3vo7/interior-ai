@@ -46,12 +46,16 @@ PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "")
 NEXT_PUBLIC_BASE_URL = os.getenv("NEXT_PUBLIC_BASE_URL", "")
 DOMAIN = os.getenv("DOMAIN", "")
 ALIPAY_GATEWAY = os.getenv("ALIPAY_GATEWAY", "https://openapi.alipay.com/gateway.do")
+MANUAL_PAYMENT_QR_URL = os.getenv("MANUAL_PAYMENT_QR_URL", "")
+MANUAL_PAYMENT_LABEL = os.getenv("MANUAL_PAYMENT_LABEL", "支付宝扫码转账")
 UPLOAD_DIR   = UPLOAD_ROOT
 DATA_DIR     = DATA_ROOT
 DB_PATH      = DATA_DIR / "app.db"
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 ROOT_DIR = Path(__file__).resolve().parent.parent
 INDEX_HTML = ROOT_DIR / "index.html"
+PAYMENT_PROOF_DIR = UPLOAD_ROOT / "payment-proofs"
+PAYMENT_PROOF_DIR.mkdir(parents=True, exist_ok=True)
 ALIPAY_PRECREATE_ALLOWED = True
 TEST_ACCOUNT_PHONE = "15251872890"
 TEST_ACCOUNT_MIN_CREDITS = 500
@@ -100,6 +104,18 @@ def get_db():
             status TEXT DEFAULT 'pending',
             created_at TEXT
         )""")
+        cur.execute("""
+            ALTER TABLE orders
+            ADD COLUMN IF NOT EXISTS payment_proof_url TEXT
+        """)
+        cur.execute("""
+            ALTER TABLE orders
+            ADD COLUMN IF NOT EXISTS payment_note TEXT
+        """)
+        cur.execute("""
+            ALTER TABLE orders
+            ADD COLUMN IF NOT EXISTS payment_submitted_at TEXT
+        """)
         conn.commit()
         return conn
 
@@ -115,6 +131,13 @@ def get_db():
     conn.execute("""CREATE TABLE IF NOT EXISTS orders(
         id TEXT PRIMARY KEY, user_id INTEGER, plan_id TEXT,
         amount INTEGER, credits INTEGER, status TEXT DEFAULT 'pending', created_at TEXT)""")
+    existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(orders)").fetchall()}
+    if "payment_proof_url" not in existing_columns:
+        conn.execute("ALTER TABLE orders ADD COLUMN payment_proof_url TEXT")
+    if "payment_note" not in existing_columns:
+        conn.execute("ALTER TABLE orders ADD COLUMN payment_note TEXT")
+    if "payment_submitted_at" not in existing_columns:
+        conn.execute("ALTER TABLE orders ADD COLUMN payment_submitted_at TEXT")
     conn.commit()
     return conn
 
@@ -247,6 +270,26 @@ def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: s
         except Exception:
             pass
         raise
+
+def _manual_payment_enabled() -> bool:
+    return bool(MANUAL_PAYMENT_QR_URL.strip())
+
+def _manual_payment_payload(order_id: str, plan: dict) -> dict:
+    return {
+        "order_id": order_id,
+        "amount": plan["price"],
+        "name": plan["name"],
+        "pay_url": "",
+        "embed_pay_url": "",
+        "pay_method": "manual_review",
+        "provider": "manual_review",
+        "return_url": _payment_return_url(order_id),
+        "qr_code": MANUAL_PAYMENT_QR_URL.strip(),
+        "qr_image_url": MANUAL_PAYMENT_QR_URL.strip(),
+        "display_mode": "manual_review",
+        "manual_review": True,
+        "manual_label": MANUAL_PAYMENT_LABEL,
+    }
 
 async def _alipay_api_call(method: str, biz_content: dict) -> dict:
     params = {
@@ -706,6 +749,9 @@ PLANS = {"c10":{"price":30,"credits":10,"name":"10次点数包"},
 class OrderReq(BaseModel):
     plan_id: str
 
+class ManualReviewApproveReq(BaseModel):
+    order_id: str
+
 @app.post("/api/payment/create")
 async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
     plan = PLANS.get(r.plan_id)
@@ -752,7 +798,11 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
                 _disable_alipay_precreate(f"precreate rejected {sub_code}")
             except Exception as exc:
                 _disable_alipay_precreate(f"precreate exception {type(exc).__name__}")
+        if _manual_payment_enabled():
+            return _manual_payment_payload(oid, plan)
         return payload
+    if _manual_payment_enabled():
+        return _manual_payment_payload(oid, plan)
     return {
         "order_id": oid,
         "amount": plan["price"],
@@ -766,17 +816,27 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
 async def order_status(order_id: str, uid=Depends(current_uid)):
     db = get_db()
     _require_user_row(db, uid)
-    row = db_execute(db, "SELECT status FROM orders WHERE id=%s AND user_id=%s", (order_id, uid)).fetchone()
+    row = db_execute(
+        db,
+        "SELECT status, payment_proof_url, payment_submitted_at FROM orders WHERE id=%s AND user_id=%s",
+        (order_id, uid),
+    ).fetchone()
     if not row:
         raise HTTPException(404, "订单不存在")
-    status = row[0]
+    status, payment_proof_url, payment_submitted_at = row
     trade_no = None
     if status != "paid" and _alipay_enabled():
         paid, trade_no = await _sync_alipay_order(order_id)
         if paid:
             status = "paid"
     user_credits = db_execute(db, "SELECT credits FROM users WHERE id=%s", (uid,)).fetchone()[0]
-    return {"status": status, "credits": user_credits, "trade_no": trade_no}
+    return {
+        "status": status,
+        "credits": user_credits,
+        "trade_no": trade_no,
+        "payment_proof_url": payment_proof_url,
+        "payment_submitted_at": payment_submitted_at,
+    }
 
 @app.get("/api/payment/checkout/{order_id}", response_class=HTMLResponse)
 def alipay_checkout(order_id: str, request: Request):
@@ -845,3 +905,79 @@ async def alipay_cb(request: Request):
         except Exception:
             return PlainTextResponse("fail")
     return PlainTextResponse("success")
+
+@app.post("/api/payment/proof/{order_id}")
+async def upload_payment_proof(
+    order_id: str,
+    file: UploadFile = File(...),
+    note: str = "",
+    uid=Depends(current_uid),
+):
+    db = get_db()
+    row = db_execute(db, "SELECT status FROM orders WHERE id=%s AND user_id=%s", (order_id, uid)).fetchone()
+    if not row:
+        raise HTTPException(404, "订单不存在")
+    if row[0] == "paid":
+        raise HTTPException(400, "该订单已支付完成")
+    filename = f"{order_id}_{uuid.uuid4().hex}{Path(file.filename or '').suffix.lower() or '.jpg'}"
+    target = PAYMENT_PROOF_DIR / filename
+    content = await file.read()
+    if not content:
+        raise HTTPException(400, "付款截图不能为空")
+    target.write_bytes(content)
+    proof_url = f"/uploads/payment-proofs/{filename}"
+    db_execute(
+        db,
+        "UPDATE orders SET status=%s, payment_proof_url=%s, payment_note=%s, payment_submitted_at=%s WHERE id=%s AND user_id=%s",
+        ("awaiting_review", proof_url, note[:200], datetime.utcnow().isoformat(), order_id, uid),
+    )
+    db.commit()
+    return {"ok": True, "status": "awaiting_review", "payment_proof_url": proof_url}
+
+@app.get("/api/payment/review-list")
+def payment_review_list(uid=Depends(current_uid)):
+    db = get_db()
+    user = _require_user_row(db, uid)
+    if user[1] != TEST_ACCOUNT_PHONE:
+        raise HTTPException(403, "无权限")
+    rows = db_execute(
+        db,
+        """
+        SELECT o.id, u.phone, o.plan_id, o.amount, o.credits, o.status, o.payment_proof_url, o.payment_note, o.payment_submitted_at
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
+        WHERE o.status='awaiting_review'
+        ORDER BY o.payment_submitted_at DESC, o.created_at DESC
+        LIMIT 100
+        """,
+    ).fetchall()
+    return [
+        {
+            "order_id": r[0],
+            "phone": r[1],
+            "plan_id": r[2],
+            "amount": r[3],
+            "credits": r[4],
+            "status": r[5],
+            "payment_proof_url": r[6],
+            "payment_note": r[7],
+            "payment_submitted_at": r[8],
+        }
+        for r in rows
+    ]
+
+@app.post("/api/payment/review/approve")
+def approve_payment_review(r: ManualReviewApproveReq, uid=Depends(current_uid)):
+    db = get_db()
+    user = _require_user_row(db, uid)
+    if user[1] != TEST_ACCOUNT_PHONE:
+        raise HTTPException(403, "无权限")
+    row = db_execute(db, "SELECT status FROM orders WHERE id=%s", (r.order_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "订单不存在")
+    if row[0] == "paid":
+        return {"ok": True, "status": "paid"}
+    if row[0] != "awaiting_review":
+        raise HTTPException(400, "当前订单未提交审核")
+    _mark_order_paid(r.order_id)
+    return {"ok": True, "status": "paid"}
