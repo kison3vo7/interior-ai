@@ -278,6 +278,17 @@ async def _precreate_alipay_trade(order_id: str, plan: dict) -> dict:
     data = await _alipay_api_call("alipay.trade.precreate", biz_content)
     return data.get("alipay_trade_precreate_response", {})
 
+def _alipay_qr_display_url(qr_code: str | None) -> str | None:
+    if not qr_code:
+        return None
+    qr_code = qr_code.strip()
+    if re.match(r"^https://mobilecodec\.alipay\.com/show\.htm\?code=", qr_code, re.I):
+        return qr_code
+    if re.match(r"^https://qr\.alipay\.com/", qr_code, re.I):
+        code = re.sub(r"^https://qr\.alipay\.com/", "", qr_code, flags=re.I).rstrip("/")
+        return f"https://mobilecodec.alipay.com/show.htm?code={code}"
+    return qr_code if qr_code.startswith("https://") else None
+
 def _disable_alipay_precreate(reason: str) -> None:
     global ALIPAY_PRECREATE_ALLOWED
     if ALIPAY_PRECREATE_ALLOWED:
@@ -689,7 +700,7 @@ def history(uid=Depends(current_uid)):
 # ─── PAYMENT ──────────────────────────────────────────
 PLANS = {"c10":{"price":30,"credits":10,"name":"10次点数包"},
          "c50":{"price":99,"credits":50,"name":"月度会员"},
-         "c200":{"price":269,"credits":200,"name":"季度套餐"},
+         "c200":{"price":269,"credits":200,"name":"季度会员"},
          "c500":{"price":999,"credits":500,"name":"企业会员"}}
 
 class OrderReq(BaseModel):
@@ -709,7 +720,7 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
     if _alipay_enabled():
         mobile = "mobile" in (request.headers.get("user-agent", "").lower())
         pay_url = f"{_site_base_url()}/api/payment/checkout/{oid}"
-        return {
+        payload = {
             "order_id": oid,
             "amount": plan["price"],
             "name": plan["name"],
@@ -722,6 +733,26 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
             "qr_image_url": None,
             "display_mode": "iframe" if not mobile else "redirect",
         }
+        if ALIPAY_PRECREATE_ALLOWED and not mobile:
+            try:
+                precreate = await _precreate_alipay_trade(oid, plan)
+                code = precreate.get("code")
+                if code == "10000" and (precreate.get("qr_code") or precreate.get("qr_code_url")):
+                    qr_code = precreate.get("qr_code") or precreate.get("qr_code_url")
+                    payload.update({
+                        "pay_url": _alipay_qr_display_url(qr_code) or pay_url,
+                        "embed_pay_url": None,
+                        "pay_method": "precreate",
+                        "qr_code": qr_code,
+                        "qr_image_url": None,
+                        "display_mode": "qr",
+                    })
+                    return payload
+                sub_code = precreate.get("sub_code") or code or "unknown"
+                _disable_alipay_precreate(f"precreate rejected {sub_code}")
+            except Exception as exc:
+                _disable_alipay_precreate(f"precreate exception {type(exc).__name__}")
+        return payload
     return {
         "order_id": oid,
         "amount": plan["price"],
