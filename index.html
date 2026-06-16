@@ -749,18 +749,22 @@ const app = createApp({
       return this.user?.phone === '15251872890';
     },
   },
-  mounted() {
+  async mounted() {
     this.restoreSavedAccount();
-    if (!localStorage.getItem('lkj_token')) {
-      this.tryAutoLogin();
-    } else if (this.user && localStorage.getItem('lkj_token')) {
-      this.refreshCurrentUser();
-    }
-      this.restorePendingOrder();
-      this.handlePaymentReturn();
-      this.ensureSampleUpload();
-    },
+    await this.bootstrapSession();
+    this.restorePendingOrder();
+    this.handlePaymentReturn();
+    this.ensureSampleUpload();
+  },
   methods: {
+    async bootstrapSession() {
+      const token = localStorage.getItem('lkj_token');
+      if (!token) {
+        await this.tryAutoLogin();
+        return;
+      }
+      await this.refreshCurrentUser();
+    },
     persistPendingOrder() {
       if (!this.order?.order_id) return;
       localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify({
