@@ -240,6 +240,10 @@ def _parse_alipay_json(raw: bytes) -> dict:
 def _payment_return_url(order_id: str) -> str:
     return f"{_site_base_url()}/?payment=return&order_id={order_id}"
 
+def _is_mobile_request(request: Request) -> bool:
+    ua = (request.headers.get("user-agent", "") or "").lower()
+    return any(token in ua for token in ("mobile", "android", "iphone", "ipad", "ipod"))
+
 def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: str | None = None) -> bool:
     db = get_db()
     try:
@@ -289,6 +293,23 @@ def _manual_payment_payload(order_id: str, plan: dict) -> dict:
         "display_mode": "manual_review",
         "manual_review": True,
         "manual_label": MANUAL_PAYMENT_LABEL,
+    }
+
+def _mock_payment_payload(order_id: str, plan: dict) -> dict:
+    return {
+        "order_id": order_id,
+        "amount": plan["price"],
+        "name": plan["name"],
+        "pay_url": f"{_site_base_url()}/api/payment/mock/{order_id}",
+        "embed_pay_url": "",
+        "pay_method": "mock",
+        "provider": "mock",
+        "return_url": _payment_return_url(order_id),
+        "qr_code": None,
+        "qr_image_url": None,
+        "display_mode": "redirect",
+        "manual_review": False,
+        "manual_label": "",
     }
 
 async def _alipay_api_call(method: str, biz_content: dict) -> dict:
@@ -354,6 +375,63 @@ async def _extract_page_pay_qr(order_id: str, plan: dict) -> dict | None:
         return {"qr_code": qr_code, "qr_image_url": qr_img_url}
     print(f"[alipay] page qr not found order={order_id} final_url={resp.url}", flush=True)
     return None
+
+async def _build_order_payment_payload(order_id: str, plan: dict, mobile: bool) -> dict:
+    if _alipay_enabled():
+        pay_url = f"{_site_base_url()}/api/payment/checkout/{order_id}"
+        payload = {
+            "order_id": order_id,
+            "amount": plan["price"],
+            "name": plan["name"],
+            "pay_url": pay_url,
+            "embed_pay_url": f"{pay_url}?embed=1" if not mobile else None,
+            "pay_method": "wap" if mobile else "page",
+            "provider": "alipay",
+            "return_url": _payment_return_url(order_id),
+            "qr_code": None,
+            "qr_image_url": None,
+            "display_mode": "iframe" if not mobile else "redirect",
+            "manual_review": False,
+            "manual_label": "",
+        }
+        if ALIPAY_PRECREATE_ALLOWED and not mobile:
+            try:
+                precreate = await _precreate_alipay_trade(order_id, plan)
+                code = precreate.get("code")
+                if code == "10000" and (precreate.get("qr_code") or precreate.get("qr_code_url")):
+                    qr_code = precreate.get("qr_code") or precreate.get("qr_code_url")
+                    payload.update({
+                        "pay_url": _alipay_qr_display_url(qr_code) or pay_url,
+                        "embed_pay_url": None,
+                        "pay_method": "precreate",
+                        "qr_code": qr_code,
+                        "qr_image_url": None,
+                        "display_mode": "qr",
+                    })
+                    return payload
+                sub_code = precreate.get("sub_code") or code or "unknown"
+                _disable_alipay_precreate(f"precreate rejected {sub_code}")
+            except Exception as exc:
+                _disable_alipay_precreate(f"precreate exception {type(exc).__name__}")
+        if not mobile:
+            try:
+                page_qr = await _extract_page_pay_qr(order_id, plan)
+                if page_qr and (page_qr.get("qr_code") or page_qr.get("qr_image_url")):
+                    payload.update({
+                        "pay_method": "page_qr",
+                        "qr_code": page_qr.get("qr_code"),
+                        "qr_image_url": page_qr.get("qr_image_url"),
+                        "display_mode": "qr",
+                    })
+                    return payload
+            except Exception as exc:
+                print(f"[alipay] page qr extract failed order={order_id} err={type(exc).__name__}", flush=True)
+        if _manual_payment_enabled():
+            return _manual_payment_payload(order_id, plan)
+        return payload
+    if _manual_payment_enabled():
+        return _manual_payment_payload(order_id, plan)
+    return _mock_payment_payload(order_id, plan)
 
 def _build_alipay_form(order_id: str, plan: dict, mobile: bool, embed_qr: bool = False) -> str:
     method = "alipay.trade.wap.pay" if mobile else "alipay.trade.page.pay"
@@ -760,70 +838,10 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
     _require_user_row(get_db(), uid)
     oid = f"LKJ{int(time.time())}{uuid.uuid4().hex[:6].upper()}"
     db = get_db()
-    db_execute(db, "INSERT INTO orders VALUES(%s,%s,%s,%s,%s,%s,%s)",
+    db_execute(db, "INSERT INTO orders (id, user_id, plan_id, amount, credits, status, created_at) VALUES(%s,%s,%s,%s,%s,%s,%s)",
                (oid, uid, r.plan_id, plan["price"], plan["credits"], "pending", datetime.utcnow().isoformat()))
     db.commit()
-    if _alipay_enabled():
-        mobile = "mobile" in (request.headers.get("user-agent", "").lower())
-        pay_url = f"{_site_base_url()}/api/payment/checkout/{oid}"
-        payload = {
-            "order_id": oid,
-            "amount": plan["price"],
-            "name": plan["name"],
-            "pay_url": pay_url,
-            "embed_pay_url": f"{pay_url}?embed=1" if not mobile else None,
-            "pay_method": "wap" if mobile else "page",
-            "provider": "alipay",
-            "return_url": _payment_return_url(oid),
-            "qr_code": None,
-            "qr_image_url": None,
-            "display_mode": "iframe" if not mobile else "redirect",
-        }
-        if ALIPAY_PRECREATE_ALLOWED and not mobile:
-            try:
-                precreate = await _precreate_alipay_trade(oid, plan)
-                code = precreate.get("code")
-                if code == "10000" and (precreate.get("qr_code") or precreate.get("qr_code_url")):
-                    qr_code = precreate.get("qr_code") or precreate.get("qr_code_url")
-                    payload.update({
-                        "pay_url": _alipay_qr_display_url(qr_code) or pay_url,
-                        "embed_pay_url": None,
-                        "pay_method": "precreate",
-                        "qr_code": qr_code,
-                        "qr_image_url": None,
-                        "display_mode": "qr",
-                    })
-                    return payload
-                sub_code = precreate.get("sub_code") or code or "unknown"
-                _disable_alipay_precreate(f"precreate rejected {sub_code}")
-            except Exception as exc:
-                _disable_alipay_precreate(f"precreate exception {type(exc).__name__}")
-        if not mobile:
-            try:
-                page_qr = await _extract_page_pay_qr(oid, plan)
-                if page_qr and (page_qr.get("qr_code") or page_qr.get("qr_image_url")):
-                    payload.update({
-                        "pay_method": "page_qr",
-                        "qr_code": page_qr.get("qr_code"),
-                        "qr_image_url": page_qr.get("qr_image_url"),
-                        "display_mode": "qr",
-                    })
-                    return payload
-            except Exception as exc:
-                print(f"[alipay] page qr extract failed order={oid} err={type(exc).__name__}", flush=True)
-        if _manual_payment_enabled():
-            return _manual_payment_payload(oid, plan)
-        return payload
-    if _manual_payment_enabled():
-        return _manual_payment_payload(oid, plan)
-    return {
-        "order_id": oid,
-        "amount": plan["price"],
-        "name": plan["name"],
-        "pay_url": f"{_site_base_url()}/api/payment/mock/{oid}",
-        "pay_method": "mock",
-        "provider": "mock",
-    }
+    return await _build_order_payment_payload(oid, plan, _is_mobile_request(request))
 
 @app.get("/api/payment/status/{order_id}")
 async def order_status(order_id: str, uid=Depends(current_uid)):
@@ -850,6 +868,35 @@ async def order_status(order_id: str, uid=Depends(current_uid)):
         "payment_proof_url": payment_proof_url,
         "payment_submitted_at": payment_submitted_at,
     }
+
+@app.get("/api/payment/order/{order_id}")
+async def order_detail(order_id: str, request: Request, uid=Depends(current_uid)):
+    db = get_db()
+    _require_user_row(db, uid)
+    row = db_execute(
+        db,
+        "SELECT plan_id, status, payment_proof_url, payment_submitted_at FROM orders WHERE id=%s AND user_id=%s",
+        (order_id, uid),
+    ).fetchone()
+    if not row:
+        raise HTTPException(404, "订单不存在")
+    plan_id, status, payment_proof_url, payment_submitted_at = row
+    plan = PLANS.get(plan_id)
+    if not plan:
+        raise HTTPException(400, "无效套餐")
+    paid_trade_no = None
+    if status != "paid" and _alipay_enabled():
+        paid, paid_trade_no = await _sync_alipay_order(order_id)
+        if paid:
+            status = "paid"
+    payload = await _build_order_payment_payload(order_id, plan, _is_mobile_request(request))
+    payload.update({
+        "status": status,
+        "payment_proof_url": payment_proof_url,
+        "payment_submitted_at": payment_submitted_at,
+        "trade_no": paid_trade_no,
+    })
+    return payload
 
 @app.get("/api/payment/checkout/{order_id}", response_class=HTMLResponse)
 def alipay_checkout(order_id: str, request: Request):

@@ -699,7 +699,7 @@ const app = createApp({
       job: null,          // {job_id, status, output_url, error}
       history: [],
       order: null,
-      orderPolling: false,
+      orderPollingToken: 0,
       paymentProofFile: null,
       paymentProofFileName: '',
       paymentProofNote: '',
@@ -775,8 +775,22 @@ const app = createApp({
         status: this.order.status || 'pending',
       }));
     },
+    normalizeOrderPayload(d, fallback = {}) {
+      return {
+        ...fallback,
+        ...d,
+        qrCodeDataUrl: d?.qr_image_url || (d?.qr_code && /^https:\/\/(?:mobilecodec\.alipay\.com\/show\.htm\?code=|qr\.alipay\.com\/)/i.test(d.qr_code) ? this.buildQrDataUrl(d.qr_code) : '') || fallback.qrCodeDataUrl || '',
+        embedPayUrl: d?.embed_pay_url || fallback.embedPayUrl || '',
+        manualReview: !!(d?.manual_review ?? fallback.manualReview),
+        manualLabel: d?.manual_label || fallback.manualLabel || '',
+        status: d?.status || fallback.status || 'pending',
+      };
+    },
     clearPendingOrder() {
       localStorage.removeItem(ORDER_STORAGE_KEY);
+    },
+    cancelPaymentPolling() {
+      this.orderPollingToken += 1;
     },
     saveAccount(phone, password) {
       localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify({ phone, password }));
@@ -827,6 +841,7 @@ const app = createApp({
       }
     },
     closeOrderModal() {
+      this.cancelPaymentPolling();
       this.modal = null;
       this.order = null;
       this.paymentProofFile = null;
@@ -855,19 +870,7 @@ const app = createApp({
         if (!raw) return;
         const saved = JSON.parse(raw);
         if (!saved?.order_id) return;
-        this.order = {
-          amount: '',
-          name: '支付宝支付',
-          pay_url: '',
-          embedPayUrl: '',
-          qrCodeDataUrl: '',
-          manualReview: false,
-          manualLabel: '',
-          status: 'pending',
-          ...saved,
-        };
-        this.modal = 'order';
-        this.pollPayment(saved.order_id);
+        this.restoreOrder(saved.order_id, saved);
       } catch {
         this.clearPendingOrder();
       }
@@ -1051,14 +1054,7 @@ const app = createApp({
       this.loading=true;
       try {
         const d = await req('/api/payment/create', {method:'POST', body:JSON.stringify({plan_id:planId})});
-        this.order = {
-          ...d,
-          qrCodeDataUrl: d.qr_image_url || (d.qr_code && /^https:\/\/(?:mobilecodec\.alipay\.com\/show\.htm\?code=|qr\.alipay\.com\/)/i.test(d.qr_code) ? this.buildQrDataUrl(d.qr_code) : ''),
-          embedPayUrl: d.embed_pay_url || '',
-          manualReview: !!d.manual_review,
-          manualLabel: d.manual_label || '',
-          status: 'pending',
-        };
+        this.order = this.normalizeOrderPayload(d, { status:'pending' });
         this.modal='order';
         this.persistPendingOrder();
         if (this.order.manualReview) {
@@ -1118,50 +1114,67 @@ const app = createApp({
       }
       this.pollPayment(this.order.order_id);
     },
+    async fetchOrderDetails(orderId) {
+      const d = await req(`/api/payment/order/${orderId}`);
+      return this.normalizeOrderPayload(d, { order_id: orderId });
+    },
+    async restoreOrder(orderId, fallback = {}) {
+      if (!this.user) return;
+      this.modal = 'order';
+      this.order = this.normalizeOrderPayload({ order_id: orderId }, {
+        amount: '',
+        name: '支付宝支付',
+        pay_url: '',
+        embedPayUrl: '',
+        qrCodeDataUrl: '',
+        manualReview: false,
+        manualLabel: '',
+        status: 'pending',
+        ...fallback,
+      });
+      this.persistPendingOrder();
+      try {
+        const fullOrder = await this.fetchOrderDetails(orderId);
+        if (!this.order || this.order.order_id !== orderId) return;
+        this.order = fullOrder;
+        this.persistPendingOrder();
+      } catch (e) {
+        if (e?.message) console.warn('restoreOrder failed', e.message);
+      }
+      this.pollPayment(orderId);
+    },
     async pollPayment(orderId) {
-      if (this.orderPolling) return;
-      this.orderPolling = true;
+      const token = ++this.orderPollingToken;
       for(let i=0;i<60;i++) {
         await new Promise(r=>setTimeout(r,3000));
+        if (token !== this.orderPollingToken) return;
         try {
           const d = await req(`/api/payment/status/${orderId}`);
+          if (token !== this.orderPollingToken) return;
           if (this.order && this.order.order_id === orderId && d.status) {
             this.order.status = d.status;
+            if (d.payment_proof_url) this.order.payment_proof_url = d.payment_proof_url;
+            if (d.payment_submitted_at) this.order.payment_submitted_at = d.payment_submitted_at;
             this.persistPendingOrder();
           }
           if(d.status==='paid') {
             this.user.credits = d.credits;
             localStorage.setItem('lkj_user', JSON.stringify(this.user));
+            this.cancelPaymentPolling();
             this.modal=null; this.order=null;
             this.clearPendingOrder();
             this.toast(`充值成功！当前余额 ${d.credits} 次`);
-            this.orderPolling = false;
             return;
           }
         } catch {}
       }
-      this.orderPolling = false;
     },
     handlePaymentReturn() {
       const params = new URLSearchParams(location.search);
       const orderId = params.get('order_id') || params.get('orderId');
       if (!orderId) return;
       if (this.user) {
-        this.modal = 'order';
-        this.order = {
-          amount: '',
-          name: '支付宝支付',
-          pay_url: '',
-          embedPayUrl: '',
-          qrCodeDataUrl: '',
-          manualReview: false,
-          manualLabel: '',
-          status: 'pending',
-          ...(this.order || {}),
-          order_id: orderId,
-        };
-        this.persistPendingOrder();
-        this.pollPayment(orderId);
+        this.restoreOrder(orderId, this.order || {});
       }
       params.delete('payment');
       params.delete('order_id');
