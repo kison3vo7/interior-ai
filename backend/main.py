@@ -38,6 +38,8 @@ DATA_ROOT.mkdir(parents=True, exist_ok=True)
 ARK_API_KEY  = os.getenv("ARK_API_KEY", "")
 JWT_SECRET   = os.getenv("JWT_SECRET", "dev-secret")
 ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-260128")
+ARK_EDIT_MODEL = os.getenv("ARK_EDIT_MODEL", ARK_IMAGE_MODEL)
+ARK_IMAGE_EDIT_ENABLED = os.getenv("ARK_IMAGE_EDIT_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
 ALIPAY_APP_ID = os.getenv("ALIPAY_APP_ID", "")
 ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")
 ALIPAY_PUBLIC_KEY = os.getenv("ALIPAY_PUBLIC_KEY", "")
@@ -587,11 +589,12 @@ def _room_prompt(style_name: str, style_detail: str) -> str:
         "输出必须像真实设计师在原图上做的装修改造图，保留原房间特征，细节自然，避免夸张结构变化。"
     )
 
-def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
+def build_doubao_generation_payload(input_path: str, style: str, quality: str) -> dict:
     style_name = STYLES.get(style, "现代简约")
     style_detail = STYLE_DETAILS.get(style, STYLE_DETAILS["modern"])
     size = resolve_output_size(input_path, quality)
     img_data_uri = _image_data_uri(input_path)
+    control_data_uri = _control_signal_data_uri(input_path)
     if not img_data_uri:
         raise RuntimeError("未读取到用户上传的原始房间图片，无法生成参考设计图")
     payload = {
@@ -602,26 +605,64 @@ def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
         "response_format": "url",
         "reference_images": [img_data_uri],
     }
+    if control_data_uri:
+        payload["reference_images"].append(control_data_uri)
     return payload
 
+def build_doubao_edit_payload(input_path: str, style: str, quality: str) -> dict:
+    style_name = STYLES.get(style, "现代简约")
+    style_detail = STYLE_DETAILS.get(style, STYLE_DETAILS["modern"])
+    size = resolve_output_size(input_path, quality)
+    img_data_uri = _image_data_uri(input_path)
+    if not img_data_uri:
+        raise RuntimeError("未读取到用户上传的原始房间图片，无法进行编辑生成")
+    return {
+        "model": ARK_EDIT_MODEL,
+        "prompt": _room_prompt(style_name, style_detail),
+        "image": img_data_uri,
+        "n": 1,
+        "size": size,
+        "response_format": "url",
+    }
+
+async def _call_ark_image_api(client: httpx.AsyncClient, endpoint: str, payload: dict, label: str) -> str:
+    r = await client.post(
+        endpoint,
+        headers={"Authorization": f"Bearer {ARK_API_KEY}", "Content-Type": "application/json"},
+        json=payload,
+    )
+    if not r.is_success:
+        raise RuntimeError(f"{label}错误: {r.text}")
+    data = r.json()
+    items = data.get("data") or []
+    if not items or not items[0].get("url"):
+        raise RuntimeError(f"{label}返回异常: {json.dumps(data, ensure_ascii=False)}")
+    return items[0]["url"]
+
 async def call_doubao(input_path: str, style: str, quality: str) -> str:
-    payload = build_doubao_payload(input_path, style, quality)
-    headers = {"Authorization": f"Bearer {ARK_API_KEY}", "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=120) as client:
-        ref_count = len(payload.get("reference_images", []))
-        print(f"[doubao] generating model={payload['model']} style={style} size={payload['size']} image={'image' in payload} reference_images={ref_count}")
-        r2 = await client.post(
+        if ARK_IMAGE_EDIT_ENABLED:
+            edit_payload = build_doubao_edit_payload(input_path, style, quality)
+            print(f"[doubao] editing model={edit_payload['model']} style={style} size={edit_payload['size']} endpoint=/images/edits")
+            try:
+                return await _call_ark_image_api(
+                    client,
+                    "https://ark.cn-beijing.volces.com/api/v3/images/edits",
+                    edit_payload,
+                    "豆包编辑接口",
+                )
+            except Exception as edit_error:
+                print(f"[doubao] edits fallback style={style} reason={edit_error}", flush=True)
+
+        generation_payload = build_doubao_generation_payload(input_path, style, quality)
+        ref_count = len(generation_payload.get("reference_images", []))
+        print(f"[doubao] generation fallback model={generation_payload['model']} style={style} size={generation_payload['size']} reference_images={ref_count} endpoint=/images/generations")
+        return await _call_ark_image_api(
+            client,
             "https://ark.cn-beijing.volces.com/api/v3/images/generations",
-            headers=headers,
-            json=payload,
+            generation_payload,
+            "豆包生成接口",
         )
-        if not r2.is_success:
-            raise RuntimeError(f"豆包API错误: {r2.text}")
-        data = r2.json()
-        items = data.get("data") or []
-        if not items or not items[0].get("url"):
-            raise RuntimeError(f"豆包API返回异常: {json.dumps(data, ensure_ascii=False)}")
-        return items[0]["url"]
 
 async def process_job(job_id: str, input_path: str, style: str, quality: str):
     db = get_db()
