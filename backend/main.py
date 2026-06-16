@@ -3,8 +3,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from io import BytesIO
 from html import escape, unescape
+from contextlib import contextmanager
 
 import httpx, bcrypt, jwt
+import psycopg
 from PIL import Image, ImageDraw
 try:
     from pillow_heif import register_heif_opener
@@ -47,6 +49,7 @@ ALIPAY_GATEWAY = os.getenv("ALIPAY_GATEWAY", "https://openapi.alipay.com/gateway
 UPLOAD_DIR   = UPLOAD_ROOT
 DATA_DIR     = DATA_ROOT
 DB_PATH      = DATA_DIR / "app.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 ROOT_DIR = Path(__file__).resolve().parent.parent
 INDEX_HTML = ROOT_DIR / "index.html"
 ALIPAY_PRECREATE_ALLOWED = True
@@ -60,7 +63,47 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 security = HTTPBearer(auto_error=False)
 
 # ─── DB ───────────────────────────────────────────────
+USING_POSTGRES = DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")
+
+def _sqlite_param_sql(sql: str) -> str:
+    return sql.replace("%s", "?") if not USING_POSTGRES else sql
+
+def _pg_conn_kwargs() -> dict:
+    return {"autocommit": False}
+
 def get_db():
+    if USING_POSTGRES:
+        conn = psycopg.connect(DATABASE_URL, **_pg_conn_kwargs())
+        cur = conn.cursor()
+        cur.execute("""CREATE TABLE IF NOT EXISTS users(
+            id SERIAL PRIMARY KEY,
+            phone TEXT UNIQUE,
+            password TEXT,
+            credits INTEGER DEFAULT 0,
+            plan TEXT DEFAULT 'free'
+        )""")
+        cur.execute("""CREATE TABLE IF NOT EXISTS jobs(
+            id TEXT PRIMARY KEY,
+            user_id INTEGER,
+            style TEXT,
+            input_path TEXT,
+            output_url TEXT,
+            status TEXT DEFAULT 'pending',
+            error TEXT,
+            created_at TEXT
+        )""")
+        cur.execute("""CREATE TABLE IF NOT EXISTS orders(
+            id TEXT PRIMARY KEY,
+            user_id INTEGER,
+            plan_id TEXT,
+            amount INTEGER,
+            credits INTEGER,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT
+        )""")
+        conn.commit()
+        return conn
+
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,15 +119,23 @@ def get_db():
     conn.commit()
     return conn
 
+def db_execute(db, sql: str, params=()):
+    return db.execute(_sqlite_param_sql(sql), params)
+
+def db_begin_immediate(db):
+    if USING_POSTGRES:
+        return
+    db.execute("BEGIN IMMEDIATE")
+
 def _ensure_test_account_credits(db, phone: str) -> int | None:
     if phone != TEST_ACCOUNT_PHONE:
         return None
-    row = db.execute("SELECT credits FROM users WHERE phone=?", (phone,)).fetchone()
+    row = db_execute(db, "SELECT credits FROM users WHERE phone=%s", (phone,)).fetchone()
     if not row:
         return None
     credits = int(row[0] or 0)
     if credits < TEST_ACCOUNT_MIN_CREDITS:
-        db.execute("UPDATE users SET credits=? WHERE phone=?", (TEST_ACCOUNT_MIN_CREDITS, phone))
+        db_execute(db, "UPDATE users SET credits=%s WHERE phone=%s", (TEST_ACCOUNT_MIN_CREDITS, phone))
         db.commit()
         return TEST_ACCOUNT_MIN_CREDITS
     return credits
@@ -170,8 +221,8 @@ def _payment_return_url(order_id: str) -> str:
 def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: str | None = None) -> bool:
     db = get_db()
     try:
-        db.execute("BEGIN IMMEDIATE")
-        row = db.execute("SELECT user_id, credits, status, amount FROM orders WHERE id=?", (order_id,)).fetchone()
+        db_begin_immediate(db)
+        row = db_execute(db, "SELECT user_id, credits, status, amount FROM orders WHERE id=%s", (order_id,)).fetchone()
         if not row:
             db.rollback()
             return False
@@ -187,8 +238,8 @@ def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: s
             except ValueError:
                 db.rollback()
                 raise RuntimeError("支付金额解析失败")
-        db.execute("UPDATE orders SET status='paid' WHERE id=? AND status<>'paid'", (order_id,))
-        db.execute("UPDATE users SET credits=credits+? WHERE id=?", (credits, user_id))
+        db_execute(db, "UPDATE orders SET status='paid' WHERE id=%s AND status<>'paid'", (order_id,))
+        db_execute(db, "UPDATE users SET credits=credits+%s WHERE id=%s", (credits, user_id))
         db.commit()
         return True
     except Exception:
@@ -336,7 +387,7 @@ def current_uid(request: Request, cred: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(401, "Token 无效")
 
 def _require_user_row(db, uid):
-    row = db.execute("SELECT id,phone,credits,plan FROM users WHERE id=?", (uid,)).fetchone()
+    row = db_execute(db, "SELECT id,phone,credits,plan FROM users WHERE id=%s", (uid,)).fetchone()
     if not row:
         raise HTTPException(401, "账号不存在，请重新登录")
     return row
@@ -351,19 +402,23 @@ def register(r: AuthReq, response: Response):
     db = get_db()
     initial_credits = TEST_ACCOUNT_MIN_CREDITS if r.phone == TEST_ACCOUNT_PHONE else 1
     try:
-        db.execute("INSERT INTO users(phone,password,credits,plan) VALUES(?,?,?,?)", (r.phone, hashed, initial_credits, "free"))
+        db_execute(db, "INSERT INTO users(phone,password,credits,plan) VALUES(%s,%s,%s,%s)", (r.phone, hashed, initial_credits, "free"))
         db.commit()
-        uid = db.execute("SELECT id FROM users WHERE phone=?", (r.phone,)).fetchone()[0]
+        uid = db_execute(db, "SELECT id FROM users WHERE phone=%s", (r.phone,)).fetchone()[0]
         token = jwt.encode({"sub": uid, "exp": datetime.utcnow()+timedelta(days=30)}, JWT_SECRET)
         _set_auth_cookie(response, token)
         return {"token": token, "credits": initial_credits, "plan": "free"}
-    except sqlite3.IntegrityError:
+    except (sqlite3.IntegrityError, psycopg.errors.UniqueViolation):
+        try:
+            db.rollback()
+        except Exception:
+            pass
         raise HTTPException(400, "手机号已注册")
 
 @app.post("/api/auth/login")
 def login(r: AuthReq, response: Response):
     db = get_db()
-    row = db.execute("SELECT id,password,credits,plan FROM users WHERE phone=?", (r.phone,)).fetchone()
+    row = db_execute(db, "SELECT id,password,credits,plan FROM users WHERE phone=%s", (r.phone,)).fetchone()
     if not row or not bcrypt.checkpw(r.password.encode(), row[1].encode()):
         raise HTTPException(401, "手机号或密码错误")
     credits = _ensure_test_account_credits(db, r.phone)
@@ -564,12 +619,12 @@ async def call_doubao(input_path: str, style: str, quality: str) -> str:
 async def process_job(job_id: str, input_path: str, style: str, quality: str):
     db = get_db()
     try:
-        db.execute("UPDATE jobs SET status='processing' WHERE id=?", (job_id,)); db.commit()
+        db_execute(db, "UPDATE jobs SET status='processing' WHERE id=%s", (job_id,)); db.commit()
         url = await call_doubao(input_path, style, quality)
-        db.execute("UPDATE jobs SET status='done',output_url=? WHERE id=?", (url, job_id))
+        db_execute(db, "UPDATE jobs SET status='done',output_url=%s WHERE id=%s", (url, job_id))
     except Exception as e:
         print(f"[job:{job_id}] failed style={style} quality={quality} input={input_path} error={e}")
-        db.execute("UPDATE jobs SET status='failed',error=? WHERE id=?", (str(e), job_id))
+        db_execute(db, "UPDATE jobs SET status='failed',error=%s WHERE id=%s", (str(e), job_id))
     finally:
         db.commit()
 
@@ -595,9 +650,9 @@ async def generate(file_id: str, req: GenReq, bg: BackgroundTasks, uid=Depends(c
     input_path = str(UPLOAD_DIR / file_id)
     if not Path(input_path).exists():
         raise HTTPException(404, "图片不存在")
-    db.execute("UPDATE users SET credits=credits-1 WHERE id=?", (uid,)); db.commit()
+    db_execute(db, "UPDATE users SET credits=credits-1 WHERE id=%s", (uid,)); db.commit()
     job_id = str(uuid.uuid4())
-    db.execute("INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?)",
+    db_execute(db, "INSERT INTO jobs VALUES(%s,%s,%s,%s,%s,%s,%s,%s)",
                (job_id, uid, req.style, input_path, None, "pending", None, datetime.utcnow().isoformat()))
     db.commit()
     bg.add_task(process_job, job_id, input_path, req.style, req.quality)
@@ -605,14 +660,14 @@ async def generate(file_id: str, req: GenReq, bg: BackgroundTasks, uid=Depends(c
 
 @app.get("/api/generate/status/{job_id}")
 def status(job_id: str, uid=Depends(current_uid)):
-    row = get_db().execute("SELECT id,status,output_url,error FROM jobs WHERE id=? AND user_id=?",
+    row = db_execute(get_db(), "SELECT id,status,output_url,error FROM jobs WHERE id=%s AND user_id=%s",
                            (job_id, uid)).fetchone()
     if not row: raise HTTPException(404, "任务不存在")
     return {"job_id": row[0], "status": row[1], "output_url": row[2], "error": row[3]}
 
 @app.get("/api/generate/history")
 def history(uid=Depends(current_uid)):
-    rows = get_db().execute("SELECT id,style,output_url,status,created_at FROM jobs WHERE user_id=? ORDER BY created_at DESC LIMIT 30", (uid,)).fetchall()
+    rows = db_execute(get_db(), "SELECT id,style,output_url,status,created_at FROM jobs WHERE user_id=%s ORDER BY created_at DESC LIMIT 30", (uid,)).fetchall()
     return [{"id":r[0],"style":r[1],"url":r[2],"status":r[3],"created_at":r[4]} for r in rows]
 
 # ─── PAYMENT ──────────────────────────────────────────
@@ -631,7 +686,7 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
     _require_user_row(get_db(), uid)
     oid = f"LKJ{int(time.time())}{uuid.uuid4().hex[:6].upper()}"
     db = get_db()
-    db.execute("INSERT INTO orders VALUES(?,?,?,?,?,?,?)",
+    db_execute(db, "INSERT INTO orders VALUES(%s,%s,%s,%s,%s,%s,%s)",
                (oid, uid, r.plan_id, plan["price"], plan["credits"], "pending", datetime.utcnow().isoformat()))
     db.commit()
     if _alipay_enabled():
@@ -663,7 +718,7 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
 async def order_status(order_id: str, uid=Depends(current_uid)):
     db = get_db()
     _require_user_row(db, uid)
-    row = db.execute("SELECT status FROM orders WHERE id=? AND user_id=?", (order_id, uid)).fetchone()
+    row = db_execute(db, "SELECT status FROM orders WHERE id=%s AND user_id=%s", (order_id, uid)).fetchone()
     if not row: raise HTTPException(404, "订单不存在")
     status = row[0]
     trade_no = None
@@ -671,13 +726,13 @@ async def order_status(order_id: str, uid=Depends(current_uid)):
         paid, trade_no = await _sync_alipay_order(order_id)
         if paid:
             status = "paid"
-    user_credits = db.execute("SELECT credits FROM users WHERE id=?", (uid,)).fetchone()[0]
+    user_credits = db_execute(db, "SELECT credits FROM users WHERE id=%s", (uid,)).fetchone()[0]
     return {"status": status, "credits": user_credits, "trade_no": trade_no}
 
 @app.get("/api/payment/checkout/{order_id}", response_class=HTMLResponse)
 def alipay_checkout(order_id: str, request: Request):
     db = get_db()
-    row = db.execute("SELECT plan_id, status FROM orders WHERE id=?", (order_id,)).fetchone()
+    row = db_execute(db, "SELECT plan_id, status FROM orders WHERE id=%s", (order_id,)).fetchone()
     if not row:
         raise HTTPException(404, "订单不存在")
     if row[1] == "paid":
