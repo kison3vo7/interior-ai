@@ -758,6 +758,9 @@ const app = createApp({
   },
   methods: {
     async bootstrapSession() {
+      await this.syncCurrentUser();
+    },
+    async syncCurrentUser() {
       const token = localStorage.getItem('lkj_token');
       if (!token) {
         await this.tryAutoLogin();
@@ -907,11 +910,12 @@ const app = createApp({
       localStorage.removeItem('lkj_token'); localStorage.removeItem('lkj_user'); localStorage.removeItem(ACCOUNT_STORAGE_KEY);
       this.user=null; this.page='home'; this.toast('已退出登录');
     },
-    goGenerate() {
+    async goGenerate() {
       if (!this.user || !localStorage.getItem('lkj_token')) {
         this.openAuth('login');
         return;
       }
+      await this.syncCurrentUser();
       this.page='generate';
       this.step=1;
     },
@@ -929,11 +933,13 @@ const app = createApp({
     },
     async goHistory() {
       if (!this.user) { this.openAuth('login'); return; }
+      await this.syncCurrentUser();
       this.page='history';
       try { this.history = await req('/api/generate/history'); } catch {}
     },
     async goReview() {
       if (!this.isReviewer) return;
+      await this.syncCurrentUser();
       this.page='review';
       await this.loadReviewOrders();
     },
@@ -1013,6 +1019,7 @@ const app = createApp({
       if (!this.user) { this.openAuth('register'); return; }
       if (!this.upload?.fileId) { this.toast('请先上传房间原图','error'); return; }
       if (!this.selectedStyle) { this.toast('请先选择装修风格','error'); return; }
+      await this.syncCurrentUser();
       if ((this.user.credits||0) < 1) { this.modal='payment'; return; }
       this.loading=true; this.job={status:'processing'};
       this.startProgAnim();
@@ -1055,6 +1062,7 @@ const app = createApp({
     async createOrder(planId) {
       if (this.loading) return;
       if (!this.user) { this.modal=null; this.openAuth('register'); return; }
+      await this.syncCurrentUser();
       this.loading=true;
       try {
         const d = await req('/api/payment/create', {method:'POST', body:JSON.stringify({plan_id:planId})});
@@ -1186,7 +1194,7 @@ const app = createApp({
       const next = params.toString();
       history.replaceState({}, '', `${location.pathname}${next ? `?${next}` : ''}${location.hash || ''}`);
     },
-    buyPlan(p) { this.modal=null; this.createOrder(p.id); },
+    async buyPlan(p) { this.modal=null; await this.createOrder(p.id); },
     async ensureSampleUpload() {
       if (this.sampleUpload) return this.sampleUpload;
       try {
