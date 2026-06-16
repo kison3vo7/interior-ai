@@ -39,6 +39,7 @@ ARK_API_KEY  = os.getenv("ARK_API_KEY", "")
 JWT_SECRET   = os.getenv("JWT_SECRET", "dev-secret")
 ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-260128")
 ARK_EDIT_MODEL = os.getenv("ARK_EDIT_MODEL", ARK_IMAGE_MODEL)
+ARK_GENERATION_MODEL = os.getenv("ARK_GENERATION_MODEL", "doubao-seedream-4-0-250828")
 ARK_IMAGE_EDIT_ENABLED = os.getenv("ARK_IMAGE_EDIT_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
 ALIPAY_APP_ID = os.getenv("ALIPAY_APP_ID", "")
 ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")
@@ -57,6 +58,7 @@ INDEX_HTML = ROOT_DIR / "index.html"
 ALIPAY_PRECREATE_ALLOWED = True
 TEST_ACCOUNT_PHONE = "15251872890"
 TEST_ACCOUNT_MIN_CREDITS = 500
+ARK_IMAGE_EDIT_ALLOWED = ARK_IMAGE_EDIT_ENABLED
 
 app = FastAPI(title="灵感空间AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -594,19 +596,16 @@ def build_doubao_generation_payload(input_path: str, style: str, quality: str) -
     style_detail = STYLE_DETAILS.get(style, STYLE_DETAILS["modern"])
     size = resolve_output_size(input_path, quality)
     img_data_uri = _image_data_uri(input_path)
-    control_data_uri = _control_signal_data_uri(input_path)
     if not img_data_uri:
         raise RuntimeError("未读取到用户上传的原始房间图片，无法生成参考设计图")
     payload = {
-        "model": ARK_IMAGE_MODEL,
+        "model": ARK_GENERATION_MODEL,
         "prompt": _room_prompt(style_name, style_detail),
         "n": 1,
         "size": size,
         "response_format": "url",
         "reference_images": [img_data_uri],
     }
-    if control_data_uri:
-        payload["reference_images"].append(control_data_uri)
     return payload
 
 def build_doubao_edit_payload(input_path: str, style: str, quality: str) -> dict:
@@ -632,7 +631,8 @@ async def _call_ark_image_api(client: httpx.AsyncClient, endpoint: str, payload:
         json=payload,
     )
     if not r.is_success:
-        raise RuntimeError(f"{label}错误: {r.text}")
+        detail = r.text.strip() or f"HTTP {r.status_code}"
+        raise RuntimeError(f"{label}错误: {detail}")
     data = r.json()
     items = data.get("data") or []
     if not items or not items[0].get("url"):
@@ -640,8 +640,9 @@ async def _call_ark_image_api(client: httpx.AsyncClient, endpoint: str, payload:
     return items[0]["url"]
 
 async def call_doubao(input_path: str, style: str, quality: str) -> str:
+    global ARK_IMAGE_EDIT_ALLOWED
     async with httpx.AsyncClient(timeout=120) as client:
-        if ARK_IMAGE_EDIT_ENABLED:
+        if ARK_IMAGE_EDIT_ALLOWED:
             edit_payload = build_doubao_edit_payload(input_path, style, quality)
             print(f"[doubao] editing model={edit_payload['model']} style={style} size={edit_payload['size']} endpoint=/images/edits")
             try:
@@ -653,6 +654,9 @@ async def call_doubao(input_path: str, style: str, quality: str) -> str:
                 )
             except Exception as edit_error:
                 print(f"[doubao] edits fallback style={style} reason={edit_error}", flush=True)
+                if "HTTP 404" in str(edit_error):
+                    ARK_IMAGE_EDIT_ALLOWED = False
+                    print("[doubao] disable edits for current process because endpoint/model is unavailable", flush=True)
 
         generation_payload = build_doubao_generation_payload(input_path, style, quality)
         ref_count = len(generation_payload.get("reference_images", []))
