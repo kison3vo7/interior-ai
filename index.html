@@ -62,6 +62,42 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .plan-desc{font-size:13px;color:var(--muted);margin:6px 0 12px}
 .plan-feat{list-style:none;font-size:13px;color:#475569}
 .plan-feat li::before{content:'✓ ';color:var(--g);font-weight:700}
+.section{padding:64px 20px}
+.section-light{background:#fff}
+.section-title{text-align:center;margin-bottom:36px}
+.section-title h2{font-size:30px;font-weight:800;margin-bottom:8px}
+.section-title p{font-size:15px;color:var(--muted);max-width:760px;margin:0 auto}
+.feature-grid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.feature-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px}
+.feature-card h3{font-size:17px;margin:12px 0 8px}
+.feature-card p{font-size:14px;color:var(--muted)}
+.scene-grid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.scene-card{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.scene-card img{width:100%;height:180px;object-fit:cover;display:block}
+.scene-info{padding:16px}
+.scene-info h3{font-size:16px;margin-bottom:6px}
+.scene-info p{font-size:13px;color:var(--muted)}
+.process-grid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.process-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px}
+.process-card .num{display:inline-flex;width:34px;height:34px;border-radius:50%;align-items:center;justify-content:center;background:#ede9fe;color:var(--p);font-weight:800;margin-bottom:12px}
+.info-grid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+.info-panel{background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px}
+.info-panel h3{font-size:18px;margin-bottom:12px}
+.info-panel p,.info-panel li{font-size:14px;color:var(--muted)}
+.info-panel ul{padding-left:18px}
+.info-row{display:grid;grid-template-columns:120px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid #eef2f7}
+.info-row:last-child{border-bottom:none}
+.info-row strong{font-size:14px;color:var(--text)}
+.info-row span{font-size:14px;color:var(--muted)}
+.audit-strip{max-width:1120px;margin:0 auto;background:linear-gradient(135deg,#1e293b,#334155);border-radius:20px;padding:28px;color:#fff;display:grid;grid-template-columns:1.3fr .7fr;gap:18px;align-items:center}
+.audit-strip p{color:#cbd5e1;font-size:14px}
+.audit-list{display:grid;gap:10px}
+.audit-item{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;font-size:14px}
+.site-footer{background:#0f172a;color:#cbd5e1;padding:26px 20px 38px}
+.site-footer .inner{max-width:1120px;margin:0 auto}
+.site-footer .top{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+.site-footer .brand{font-size:20px;font-weight:800;color:#fff}
+.site-footer .copy{font-size:13px;color:#94a3b8}
 /* OVERLAY / MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
@@ -94,17 +130,12 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .legal-card h3{font-size:16px;margin-bottom:8px}
 .legal-card p,.legal-card li{font-size:13px;color:var(--muted)}
 .legal-card ul{padding-left:18px}
-@media(max-width:600px){.styles-grid{grid-template-columns:repeat(2,1fr)}.result-grid{grid-template-columns:1fr}.nav-links{display:none}}
+@media(max-width:860px){.info-grid,.audit-strip{grid-template-columns:1fr}}
+@media(max-width:600px){.styles-grid{grid-template-columns:repeat(2,1fr)}.result-grid{grid-template-columns:1fr}.nav-links{display:none}.hero{padding:56px 20px 40px}.section{padding:48px 16px}.info-row{grid-template-columns:1fr}.site-footer .top{flex-direction:column}}
 </style>
 </head>
 <body>
 <div id="app">
-
-<!-- DEMO BANNER -->
-<div v-if="isDemoMode" style="background:#f59e0b;color:#fff;text-align:center;padding:7px;font-size:13px;font-weight:600">
-  ⚡ 演示模式（后端未启动）— 注册/生成/支付均为模拟数据
-  <a style="color:#fff;text-decoration:underline;margin-left:10px;cursor:pointer" @click="isDemoMode=false;DEMO_MODE=false">我已启动后端，关闭提示</a>
-</div>
 
 <!-- NAV -->
 <nav>
@@ -112,6 +143,8 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   <div class="nav-links">
     <a @click="page='home'">首页</a>
     <a @click="goGenerate">在线生成</a>
+    <a @click="scrollToSection('service-info')">服务说明</a>
+    <a @click="scrollToSection('contact-info')">联系我们</a>
     <a @click="goHistory" v-if="user">历史记录</a>
   </div>
   <div class="nav-right">
@@ -132,7 +165,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   <div class="hero">
     <p style="display:inline-flex;align-items:center;gap:6px;background:#ede9fe;color:var(--p);font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px;margin-bottom:18px">🚀 灵感空间AI · 12种风格 · 完整设计方案</p>
     <h1>一张照片<br><em>秒变精装效果图</em></h1>
-    <p>上传房间照片即可根据房间结构生成完整设计方案，12种热门装修风格随意切换，快速找到真正适合自己的理想家装风格。</p>
+    <p>上传真实房间照片，系统会结合空间结构、采光和布局生成可参考的家装设计方案。支持 12 种热门装修风格切换，可直接购买点数或开通会员在线生成与下载效果图。</p>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-primary" style="padding:13px 28px;font-size:16px" @click="goGenerate">立即体验</button>
       <button class="btn btn-ghost" style="padding:13px 28px;font-size:16px" @click="page='pricing'">查看定价</button>
@@ -144,18 +177,150 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       </div>
     </div>
   </div>
-  <!-- How it works -->
-  <div style="background:#1e293b;padding:60px 20px;text-align:center">
-    <h2 style="color:#fff;font-size:28px;font-weight:800;margin-bottom:8px">三步生成效果图</h2>
-    <p style="color:#94a3b8;margin-bottom:40px">无需设计师，无需3D建模</p>
-    <div style="max-width:700px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
-      <div v-for="s in [{i:'📸',t:'上传房间照片',d:'手机拍一张，AI识别户型与空间结构'},{i:'🎨',t:'选择装修风格',d:'12种热门风格自由切换，找到喜欢的家装方向'},{i:'⚡',t:'10秒生成',d:'自动输出完整设计方案与高清效果图'}]" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px 16px">
-        <div style="font-size:32px;margin-bottom:12px">{{s.i}}</div>
-        <div style="color:#fff;font-weight:700;margin-bottom:6px">{{s.t}}</div>
-        <div style="color:#94a3b8;font-size:13px">{{s.d}}</div>
+  <section class="section section-light">
+    <div class="section-title">
+      <h2>灵感空间AI卖什么</h2>
+      <p>这是一个面向普通家庭装修、软装参考和设计沟通的在线 AI 家装效果图服务，用户购买生成次数后即可上传房间照片，选择喜欢的风格并获得成品效果图。</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card" v-for="f in [
+        {icon:'🖼️',title:'上传真实房间照片',desc:'支持客厅、卧室、餐厅、书房、儿童房等室内空间照片上传。'},
+        {icon:'🧠',title:'识别空间结构',desc:'根据房间格局、窗户、墙面、家具位置生成对应的装修参考方案。'},
+        {icon:'🎨',title:'12种热门装修风格',desc:'现代简约、北欧、新中式、轻奢、奶油、侘寂、原木、法式等可随时切换。'},
+        {icon:'💳',title:'点数包与会员购买',desc:'支持按次充值和会员开通，购买后立即获得可用生成次数。'}
+      ]">
+        <div style="font-size:30px">{{ f.icon }}</div>
+        <h3>{{ f.title }}</h3>
+        <p>{{ f.desc }}</p>
       </div>
     </div>
-  </div>
+  </section>
+
+  <section class="section" style="background:#1e293b;text-align:center">
+    <div class="section-title" style="margin-bottom:40px">
+      <h2 style="color:#fff">三步生成效果图</h2>
+      <p style="color:#94a3b8">无需建模，无需复杂软件，打开网页即可下单使用</p>
+    </div>
+    <div class="process-grid">
+      <div class="process-card" v-for="s in [
+        {n:'1',t:'上传房间照片',d:'用户上传真实房间照片，系统读取画面中的结构、开窗、采光与家具布局。'},
+        {n:'2',t:'选择装修风格',d:'从 12 种热门家装风格中选择喜欢的设计方向，支持反复切换比较。'},
+        {n:'3',t:'在线支付购买',d:'可先注册领取体验次数，也可直接充值点数包或开通会员继续生成。'},
+        {n:'4',t:'下载设计结果',d:'生成完成后可查看、下载高清效果图，用于装修参考与沟通展示。'}
+      ]">
+        <div class="num">{{ s.n }}</div>
+        <h3 style="font-size:17px;margin-bottom:8px">{{ s.t }}</h3>
+        <p style="font-size:14px;color:var(--muted)">{{ s.d }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-light">
+    <div class="section-title">
+      <h2>适用场景与案例展示</h2>
+      <p>适用于装修前风格探索、家庭改造参考、与设计师沟通需求、软装换新前方案预览等场景。</p>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card" v-for="c in caseStudies" :key="c.title">
+        <img :src="c.image" :alt="c.title">
+        <div class="scene-info">
+          <h3>{{ c.title }}</h3>
+          <p>{{ c.desc }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background:#f8fafc">
+    <div class="section-title">
+      <h2>价格与购买方式</h2>
+      <p>用户可注册领取一次免费体验，后续按需购买点数包或开通会员。购买完成后系统自动到账生成次数，可直接在网页端继续使用。</p>
+    </div>
+    <div class="pricing-grid" style="max-width:1120px;margin:0 auto">
+      <div class="plan" v-for="p in pricingPlans" :key="p.id" :class="{featured:p.featured}">
+        <div style="font-weight:700;font-size:15px;margin-bottom:6px">{{ p.name }}</div>
+        <div class="plan-price">{{ p.price }}<small>/{{ p.unit }}</small></div>
+        <div class="plan-desc">{{ p.desc }}</div>
+        <ul class="plan-feat">
+          <li v-for="f in p.features" :key="f">{{ f }}</li>
+        </ul>
+        <button class="btn btn-primary" style="width:100%;margin-top:14px" @click="buyPlan(p)">{{ p.cta }}</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-light" id="service-info">
+    <div class="section-title">
+      <h2>服务说明、退款规则与经营信息</h2>
+      <p>以下内容用于说明本站实际经营内容、支付购买方式、售后规则与经营主体信息，方便用户了解后再下单。</p>
+    </div>
+    <div class="info-grid">
+      <div class="info-panel">
+        <h3>服务说明</h3>
+        <ul>
+          <li>服务内容：AI 家装效果图生成、风格切换、高清图片下载。</li>
+          <li>交付形式：用户支付后获得生成次数，在网页端上传照片并在线生成结果。</li>
+          <li>适用范围：仅用于装修参考与灵感展示，不替代专业施工图、结构改造图与水电图。</li>
+          <li>使用方式：注册账号后可领取一次体验次数，充值或开通会员后继续使用。</li>
+        </ul>
+        <h3 style="margin-top:20px">退款规则</h3>
+        <ul>
+          <li>未使用的点数包，在支付后 24 小时内可联系客服申请退款。</li>
+          <li>已消耗的生成次数、已完成的图片生成服务，不支持退款。</li>
+          <li>因系统故障导致连续生成失败且未交付结果的订单，可联系客服核实后补发次数或退款。</li>
+        </ul>
+        <h3 style="margin-top:20px">隐私政策摘要</h3>
+        <ul>
+          <li>上传照片仅用于生成当前装修效果图，不会对外公开展示用户原始照片。</li>
+          <li>用户注册手机号仅用于登录验证、订单查询与售后联系。</li>
+          <li>支付过程通过支付宝官方收银台完成，本站不存储用户支付密码等敏感金融信息。</li>
+        </ul>
+      </div>
+      <div class="info-panel" id="contact-info">
+        <h3>经营主体信息</h3>
+        <div class="info-row"><strong>网站名称</strong><span>灵感空间AI</span></div>
+        <div class="info-row"><strong>经营内容</strong><span>在线 AI 家装效果图生成服务、点数包充值、会员开通</span></div>
+        <div class="info-row"><strong>支付方式</strong><span>支付宝电脑网站支付、支付宝手机网站支付</span></div>
+        <div class="info-row"><strong>访问地址</strong><span>https://interior-ai-aemn.onrender.com</span></div>
+        <div class="info-row"><strong>客服邮箱</strong><span>support@lingkj.com</span></div>
+        <div class="info-row"><strong>客服时间</strong><span>周一至周日 09:00 - 21:00</span></div>
+        <div class="info-row"><strong>售后处理</strong><span>通过站内订单号和注册手机号核实后处理退款、补发次数与支付异常问题</span></div>
+        <div class="info-row"><strong>主体资料</strong><span>公司主体信息、经营地址与资质文件以支付宝提交材料和审核页展示信息为准</span></div>
+        <div style="margin-top:18px;background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:16px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text)">审核补料说明</div>
+          <div style="font-size:13px;color:var(--muted)">本站提供真实在线家装效果图生成服务，页面已展示商品内容、购买入口、价格套餐、使用流程、支付方式、退款规则、客服联系方式与经营说明，可直接用于支付宝网站支付审核截图。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background:#eef2ff">
+    <div class="audit-strip">
+      <div>
+        <h2 style="font-size:28px;font-weight:800;margin-bottom:10px">现在就可以完成购买闭环</h2>
+        <p>用户进入首页后可查看服务介绍、价格与售后规则，注册账号后领取一次免费体验，再通过充值或会员开通方式获得更多生成次数，支付完成后立即回到网页继续生成。</p>
+      </div>
+      <div class="audit-list">
+        <div class="audit-item">1. 首页可见品牌名、域名、服务内容</div>
+        <div class="audit-item">2. 套餐与支付入口清晰可见</div>
+        <div class="audit-item">3. 服务说明、退款规则、联系方式完整</div>
+        <div class="audit-item">4. 支付后返回站内继续使用</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <div class="top">
+        <div>
+          <div class="brand">灵感空间AI</div>
+          <div class="copy">上传房间照片，在线生成家装效果图与风格方案。</div>
+        </div>
+        <div class="copy">网站地址：https://interior-ai-aemn.onrender.com</div>
+      </div>
+      <div class="copy">服务内容：AI 家装效果图生成服务 · 点数包充值 · 会员开通 · 客服邮箱：support@lingkj.com</div>
+    </div>
+  </footer>
 </template>
 
 <!-- ===== GENERATE PAGE ===== -->
@@ -436,7 +601,7 @@ async function mockReq(path, opts={}) {
   }
   if (path.includes('/generate/history')) return [];
   if (path.includes('/payment/create')) {
-    const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度套餐',credits:200},c500:{price:999,name:'企业会员',credits:500}}[body.plan_id]||{price:30,name:'演示套餐',credits:10};
+    const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度套餐',credits:200},c500:{price:999,name:'企业会员',credits:500}}[body.plan_id]||{price:30,name:'10次点数包',credits:10};
     const token = (opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
     const phone = token.startsWith('Bearer demo_') ? token.replace('Bearer demo_','') : '';
     const orderId = 'DEMO'+Date.now();
@@ -547,6 +712,12 @@ const app = createApp({
         {id:'c50',  name:'月度会员',   price:'¥99', unit:'月',   desc:'每月50次，折合¥2/次',features:['50次/月','2K高清优先','历史记录6个月'], cta:'开通会员', featured:true},
         {id:'c500', name:'企业会员',   price:'¥999',unit:'月',   desc:'每月500次，适合高频团队使用', features:['500次/月','高清优先生成','历史记录12个月','优先支持服务'], cta:'开通会员', featured:false},
       ],
+      caseStudies: [
+        {title:'客厅焕新方案', desc:'保留原始采光与窗位，快速对比现代简约、奶油风与轻奢风的落地视觉差异。', image:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=900&auto=format&fit=crop'},
+        {title:'卧室布局参考', desc:'基于床位、过道和柜体位置输出更贴近原房间结构的卧室改造效果图。', image:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=900&auto=format&fit=crop&sat=-20'},
+        {title:'餐厅与开放区', desc:'适合装修前确认餐边柜、灯光氛围和整体色系，帮助家庭成员统一风格方向。', image:'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=900&auto=format&fit=crop'},
+        {title:'书房与次卧改造', desc:'用于小空间重构与功能优化，适合书房、儿童房、次卧等多种家装场景。', image:'https://images.unsplash.com/photo-1494526585095-c41746248156?w=900&auto=format&fit=crop'},
+      ],
     }
   },
   mounted() {
@@ -607,12 +778,11 @@ const app = createApp({
             body:JSON.stringify({ phone:saved.phone, password:saved.password }),
             headers:{}
           });
-        } catch (loginError) {
-          d = await req('/api/auth/register', {
-            method:'POST',
-            body:JSON.stringify({ phone:saved.phone, password:saved.password }),
-            headers:{}
-          });
+        } catch {
+          this.user = null;
+          localStorage.removeItem('lkj_token');
+          localStorage.removeItem('lkj_user');
+          return;
         }
         localStorage.setItem('lkj_token', d.token);
         this.user = { phone:saved.phone, credits:d.credits, plan:d.plan || 'free' };
@@ -682,7 +852,9 @@ const app = createApp({
         this.modal=null;
         this.toast(this.authTab==='register'?'注册成功':'登录成功');
         this.page='generate';
-      } catch(e) { this.authError = (e.message==='Failed to fetch'||e.message.includes('Load failed')) ? '无法连接服务器，请确认后端已启动' : e.message; }
+      } catch(e) {
+        this.authError = (e.message==='Failed to fetch'||e.message.includes('Load failed')) ? '无法连接服务器，请确认后端已启动' : e.message;
+      }
       finally { this.loading=false; }
     },
     logout() {
@@ -697,6 +869,18 @@ const app = createApp({
       }
       this.page='generate';
       this.step=1;
+    },
+    scrollToSection(id) {
+      if (this.page !== 'home') {
+        this.page = 'home';
+        this.$nextTick(() => {
+          const el = document.getElementById(id);
+          if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+        return;
+      }
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
     },
     async goHistory() {
       if (!this.user) { this.openAuth('login'); return; }
@@ -783,7 +967,7 @@ const app = createApp({
         try {
           const d = await req(`/api/generate/status/${jobId}`);
           attempts += 1;
-          this.job=d; this.progLabel=labels[Math.min(i++,labels.length-1)]; this.progPct=Math.min(95,Math.max(i*20, Math.floor((attempts / 60) * 95)));
+          this.job=d; this.progLabel=labels[Math.min(i++,labels.length-1)]; this.progPct=Math.min(95, Math.max(i*20, Math.floor((attempts / 60) * 95)));
           if(d.status==='done'||d.status==='failed') { this.progPct=100; break; }
         } catch(e) { this.job={status:'failed',error:e.message}; break; }
       }

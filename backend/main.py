@@ -373,6 +373,9 @@ def _set_auth_cookie(response: Response, token: str):
 def _clear_auth_cookie(response: Response):
     response.delete_cookie("lkj_token", path="/")
 
+def _build_auth_token(uid: int | str) -> str:
+    return jwt.encode({"sub": str(uid), "exp": datetime.utcnow() + timedelta(days=30)}, JWT_SECRET, algorithm="HS256")
+
 def current_uid(request: Request, cred: HTTPAuthorizationCredentials = Depends(security)):
     try:
         token = None
@@ -382,7 +385,11 @@ def current_uid(request: Request, cred: HTTPAuthorizationCredentials = Depends(s
             token = request.cookies.get("lkj_token")
         if not token:
             raise HTTPException(401, "未登录")
-        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])["sub"]
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        sub = payload.get("sub")
+        if sub is None:
+            raise HTTPException(401, "Token 无效")
+        return int(sub)
     except Exception:
         raise HTTPException(401, "Token 无效")
 
@@ -405,7 +412,7 @@ def register(r: AuthReq, response: Response):
         db_execute(db, "INSERT INTO users(phone,password,credits,plan) VALUES(%s,%s,%s,%s)", (r.phone, hashed, initial_credits, "free"))
         db.commit()
         uid = db_execute(db, "SELECT id FROM users WHERE phone=%s", (r.phone,)).fetchone()[0]
-        token = jwt.encode({"sub": uid, "exp": datetime.utcnow()+timedelta(days=30)}, JWT_SECRET)
+        token = _build_auth_token(uid)
         _set_auth_cookie(response, token)
         return {"token": token, "credits": initial_credits, "plan": "free"}
     except (sqlite3.IntegrityError, psycopg.errors.UniqueViolation):
@@ -422,7 +429,7 @@ def login(r: AuthReq, response: Response):
     if not row or not bcrypt.checkpw(r.password.encode(), row[1].encode()):
         raise HTTPException(401, "手机号或密码错误")
     credits = _ensure_test_account_credits(db, r.phone)
-    token = jwt.encode({"sub": row[0], "exp": datetime.utcnow()+timedelta(days=30)}, JWT_SECRET)
+    token = _build_auth_token(row[0])
     _set_auth_cookie(response, token)
     return {"token": token, "credits": credits if credits is not None else row[2], "plan": row[3]}
 
@@ -661,14 +668,15 @@ async def generate(file_id: str, req: GenReq, bg: BackgroundTasks, uid=Depends(c
 @app.get("/api/generate/status/{job_id}")
 def status(job_id: str, uid=Depends(current_uid)):
     row = db_execute(get_db(), "SELECT id,status,output_url,error FROM jobs WHERE id=%s AND user_id=%s",
-                           (job_id, uid)).fetchone()
-    if not row: raise HTTPException(404, "任务不存在")
+                     (job_id, uid)).fetchone()
+    if not row:
+        raise HTTPException(404, "任务不存在")
     return {"job_id": row[0], "status": row[1], "output_url": row[2], "error": row[3]}
 
 @app.get("/api/generate/history")
 def history(uid=Depends(current_uid)):
     rows = db_execute(get_db(), "SELECT id,style,output_url,status,created_at FROM jobs WHERE user_id=%s ORDER BY created_at DESC LIMIT 30", (uid,)).fetchall()
-    return [{"id":r[0],"style":r[1],"url":r[2],"status":r[3],"created_at":r[4]} for r in rows]
+    return [{"id":r[0], "style":r[1], "url":r[2], "status":r[3], "created_at":r[4]} for r in rows]
 
 # ─── PAYMENT ──────────────────────────────────────────
 PLANS = {"c10":{"price":30,"credits":10,"name":"10次点数包"},
@@ -682,7 +690,8 @@ class OrderReq(BaseModel):
 @app.post("/api/payment/create")
 async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
     plan = PLANS.get(r.plan_id)
-    if not plan: raise HTTPException(400, "无效套餐")
+    if not plan:
+        raise HTTPException(400, "无效套餐")
     _require_user_row(get_db(), uid)
     oid = f"LKJ{int(time.time())}{uuid.uuid4().hex[:6].upper()}"
     db = get_db()
@@ -719,7 +728,8 @@ async def order_status(order_id: str, uid=Depends(current_uid)):
     db = get_db()
     _require_user_row(db, uid)
     row = db_execute(db, "SELECT status FROM orders WHERE id=%s AND user_id=%s", (order_id, uid)).fetchone()
-    if not row: raise HTTPException(404, "订单不存在")
+    if not row:
+        raise HTTPException(404, "订单不存在")
     status = row[0]
     trade_no = None
     if status != "paid" and _alipay_enabled():
