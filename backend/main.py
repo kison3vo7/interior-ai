@@ -798,6 +798,19 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
                 _disable_alipay_precreate(f"precreate rejected {sub_code}")
             except Exception as exc:
                 _disable_alipay_precreate(f"precreate exception {type(exc).__name__}")
+        if not mobile:
+            try:
+                page_qr = await _extract_page_pay_qr(oid, plan)
+                if page_qr and (page_qr.get("qr_code") or page_qr.get("qr_image_url")):
+                    payload.update({
+                        "pay_method": "page_qr",
+                        "qr_code": page_qr.get("qr_code"),
+                        "qr_image_url": page_qr.get("qr_image_url"),
+                        "display_mode": "qr",
+                    })
+                    return payload
+            except Exception as exc:
+                print(f"[alipay] page qr extract failed order={oid} err={type(exc).__name__}", flush=True)
         if _manual_payment_enabled():
             return _manual_payment_payload(oid, plan)
         return payload
