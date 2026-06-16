@@ -6,10 +6,6 @@ services:
     dockerContext: .
     dockerfilePath: ./backend/Dockerfile
     healthCheckPath: /docs
-    disk:
-      name: interior-ai-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: ARK_API_KEY
         sync: false
@@ -33,3 +29,13 @@ services:
         sync: false
       - key: APP_DATA_ROOT
         value: /var/data
+      - key: DATABASE_URL
+        fromDatabase:
+          name: interior-ai-db
+          property: connectionString
+
+databases:
+  - name: interior-ai-db
+    plan: free
+    databaseName: interior_ai
+    user: interior_ai_user
