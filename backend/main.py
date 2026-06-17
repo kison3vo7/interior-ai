@@ -42,6 +42,8 @@ ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-260128")
 ALIPAY_APP_ID = os.getenv("ALIPAY_APP_ID", "")
 ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")
 ALIPAY_PUBLIC_KEY = os.getenv("ALIPAY_PUBLIC_KEY", "")
+ALIPAY_PRIVATE_KEY_PATH = os.getenv("ALIPAY_PRIVATE_KEY_PATH", "")
+ALIPAY_PUBLIC_KEY_PATH = os.getenv("ALIPAY_PUBLIC_KEY_PATH", "")
 ALIPAY_NOTIFY_URL = os.getenv("ALIPAY_NOTIFY_URL", "")
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "")
 NEXT_PUBLIC_BASE_URL = os.getenv("NEXT_PUBLIC_BASE_URL", "")
@@ -219,7 +221,9 @@ def _site_base_url() -> str:
     return "http://127.0.0.1:8000"
 
 def _alipay_enabled() -> bool:
-    return all([ALIPAY_APP_ID, ALIPAY_PRIVATE_KEY, ALIPAY_PUBLIC_KEY, ALIPAY_NOTIFY_URL])
+    has_private = bool(ALIPAY_PRIVATE_KEY or ALIPAY_PRIVATE_KEY_PATH)
+    has_public = bool(ALIPAY_PUBLIC_KEY or ALIPAY_PUBLIC_KEY_PATH)
+    return all([ALIPAY_APP_ID, has_private, has_public, ALIPAY_NOTIFY_URL])
 
 def _mock_payment_allowed() -> bool:
     base = _site_base_url().lower()
@@ -239,13 +243,39 @@ def _normalize_pem(raw: str, kind: str) -> str:
     header = "PRIVATE KEY" if kind == "private" else "PUBLIC KEY"
     return f"-----BEGIN {header}-----\n{value}\n-----END {header}-----"
 
+def _resolve_secret_path(path_value: str) -> Path:
+    path = Path(path_value)
+    if path.is_absolute():
+        return path
+    backend_dir = Path(__file__).resolve().parent
+    candidates = [
+        backend_dir / path,
+        backend_dir / "secrets" / path.name,
+        backend_dir.parent / path,
+        backend_dir.parent / "secrets" / path.name,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return backend_dir / path
+
 def _load_alipay_private_key():
+    if ALIPAY_PRIVATE_KEY_PATH:
+        key_path = _resolve_secret_path(ALIPAY_PRIVATE_KEY_PATH)
+        if not key_path.exists():
+            raise RuntimeError(f"支付宝私钥文件不存在: {key_path}")
+        return serialization.load_pem_private_key(key_path.read_bytes(), password=None)
     return serialization.load_pem_private_key(
         _normalize_pem(ALIPAY_PRIVATE_KEY, "private").encode(),
         password=None,
     )
 
 def _load_alipay_public_key():
+    if ALIPAY_PUBLIC_KEY_PATH:
+        key_path = _resolve_secret_path(ALIPAY_PUBLIC_KEY_PATH)
+        if not key_path.exists():
+            raise RuntimeError(f"支付宝公钥文件不存在: {key_path}")
+        return serialization.load_pem_public_key(key_path.read_bytes())
     return serialization.load_pem_public_key(
         _normalize_pem(ALIPAY_PUBLIC_KEY, "public").encode()
     )
