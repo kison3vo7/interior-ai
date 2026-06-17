@@ -58,6 +58,7 @@ PAYMENT_PROOF_DIR = UPLOAD_ROOT / "payment-proofs"
 PAYMENT_PROOF_DIR.mkdir(parents=True, exist_ok=True)
 PAYMENT_CONFIG_DIR = UPLOAD_ROOT / "payment-config"
 PAYMENT_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+DEFAULT_MANUAL_PAYMENT_QR_FILE = PAYMENT_CONFIG_DIR / "alipay_qr.png"
 ALIPAY_PRECREATE_ALLOWED = True
 TEST_ACCOUNT_PHONE = "15251872890"
 TEST_ACCOUNT_MIN_CREDITS = 500
@@ -333,7 +334,10 @@ def _manual_payment_config() -> dict:
             config = json.loads(raw)
         except Exception:
             config = {}
-    qr_url = (config.get("qr_url") or MANUAL_PAYMENT_QR_URL or "").strip()
+    default_qr_url = ""
+    if DEFAULT_MANUAL_PAYMENT_QR_FILE.exists():
+        default_qr_url = f"{_site_base_url()}/uploads/payment-config/{DEFAULT_MANUAL_PAYMENT_QR_FILE.name}"
+    qr_url = (config.get("qr_url") or MANUAL_PAYMENT_QR_URL or default_qr_url or "").strip()
     label = (config.get("label") or MANUAL_PAYMENT_LABEL or "支付宝扫码转账").strip() or "支付宝扫码转账"
     return {
         "qr_url": qr_url,
