@@ -401,6 +401,8 @@ async def _build_order_payment_payload(order_id: str, plan: dict, mobile: bool) 
             print(f"[alipay] precreate rejected order={order_id} reason={reason}", flush=True)
         except Exception as exc:
             print(f"[alipay] precreate exception order={order_id} err={type(exc).__name__}", flush=True)
+        if _manual_payment_enabled():
+            return _manual_payment_payload(order_id, plan)
         raise HTTPException(502, "支付宝当面付创建失败，请先检查应用签约状态")
     return _mock_payment_payload(order_id, plan)
 
