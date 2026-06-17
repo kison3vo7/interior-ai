@@ -4,6 +4,7 @@ from pathlib import Path
 from io import BytesIO
 from html import escape, unescape
 from contextlib import contextmanager
+import shutil
 
 import httpx, bcrypt, jwt
 import psycopg
@@ -53,6 +54,7 @@ DATA_DIR     = DATA_ROOT
 DB_PATH      = DATA_DIR / "app.db"
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 ROOT_DIR = Path(__file__).resolve().parent.parent
+BUNDLED_UPLOAD_ROOT = Path(__file__).resolve().parent / "uploads"
 INDEX_HTML = ROOT_DIR / "index.html"
 PAYMENT_PROOF_DIR = UPLOAD_ROOT / "payment-proofs"
 PAYMENT_PROOF_DIR.mkdir(parents=True, exist_ok=True)
@@ -64,7 +66,22 @@ TEST_ACCOUNT_PHONE = "15251872890"
 TEST_ACCOUNT_MIN_CREDITS = 500
 app = FastAPI(title="灵感空间AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+def _seed_bundled_uploads() -> None:
+    if not BUNDLED_UPLOAD_ROOT.exists():
+        return
+    for source in BUNDLED_UPLOAD_ROOT.rglob("*"):
+        if not source.is_file():
+            continue
+        relative = source.relative_to(BUNDLED_UPLOAD_ROOT)
+        target = UPLOAD_ROOT / relative
+        if target.exists():
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+
+_seed_bundled_uploads()
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_ROOT)), name="uploads")
 
 security = HTTPBearer(auto_error=False)
 
