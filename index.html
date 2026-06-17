@@ -504,7 +504,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
     <div style="font-size:14px;color:var(--muted);margin-bottom:16px">{{ order?.name }}</div>
     <div class="pay-box">
       <template v-if="order?.manualReview">
-        <div class="pay-hint" style="margin-top:0;color:var(--p)">请先使用支付宝完成转账，再上传付款截图等待审核到账</div>
+        <div class="pay-hint" style="margin-top:0;color:var(--p)">请使用支付宝扫一扫下方二维码</div>
         <div class="pay-qr-wrap" v-if="order?.qrCodeDataUrl">
           <img class="pay-qr-img" :src="order.qrCodeDataUrl" alt="支付宝收款二维码">
         </div>
@@ -518,7 +518,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
           <input type="file" accept="image/*" @change="handlePaymentProofFileInput">
         </div>
         <div v-if="paymentProofFileName" class="pay-hint" style="color:var(--text)">已选择：{{ paymentProofFileName }}</div>
-        <div v-if="order?.status==='awaiting_review'" class="pay-hint" style="color:#b45309">付款凭证已提交，等待人工审核到账</div>
+        <div v-if="order?.status==='awaiting_review'" class="pay-hint" style="color:#b45309">订单已提交，请稍后刷新查看状态</div>
       </template>
       <template v-else-if="order?.qrCodeDataUrl">
         <div class="pay-hint" style="margin-top:0;color:var(--p)">请使用支付宝扫一扫下方二维码</div>
@@ -531,7 +531,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
         <div style="font-size:42px;margin-bottom:8px">🅰️</div>
         <div class="pay-hint">正在生成支付宝二维码…</div>
       </template>
-      <div class="pay-hint" style="margin-top:4px;color:var(--p)">{{ order?.manualReview ? '审核通过后会自动到账并刷新点数' : (shouldLaunchExternalPay(order) ? '将尝试直接拉起支付宝，支付完成后回到页面即可' : '支付后会自动返回并刷新点数') }}</div>
+      <div class="pay-hint" style="margin-top:4px;color:var(--p)">{{ order?.manualReview ? '支付完成后可返回页面查看订单状态' : (shouldLaunchExternalPay(order) ? '将尝试直接拉起支付宝，支付完成后回到页面即可' : '支付后会自动返回并刷新点数') }}</div>
       <div style="display:flex;gap:10px;margin-top:16px">
         <button class="btn btn-primary" style="flex:1" @click="order?.manualReview ? submitPaymentProof() : openPayUrl()">{{ order?.manualReview ? '提交付款截图' : (shouldLaunchExternalPay(order) ? '打开支付宝支付' : (order?.qrCodeDataUrl ? '已扫码后点这里刷新' : '重新获取二维码')) }}</button>
         <button class="btn btn-ghost" style="flex:1" @click="closeOrderModal">取消</button>

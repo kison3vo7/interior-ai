@@ -81,6 +81,7 @@ def _seed_bundled_uploads() -> None:
         shutil.copy2(source, target)
 
 _seed_bundled_uploads()
+
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_ROOT)), name="uploads")
 
 security = HTTPBearer(auto_error=False)
@@ -199,6 +200,10 @@ def home():
         resp.headers["Expires"] = "0"
         return resp
     return HTMLResponse("<h1>灵感空间AI</h1><p>Frontend not found.</p>", status_code=200)
+
+@app.head("/")
+def home_head():
+    return Response(status_code=200)
 
 @app.get("/favicon.ico")
 def favicon():
