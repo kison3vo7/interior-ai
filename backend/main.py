@@ -295,17 +295,19 @@ def _manual_payment_enabled() -> bool:
     return bool(MANUAL_PAYMENT_QR_URL.strip())
 
 def _manual_payment_payload(order_id: str, plan: dict) -> dict:
+    manual_qr = MANUAL_PAYMENT_QR_URL.strip()
+    manual_pay_url = _alipay_qr_display_url(manual_qr) or (manual_qr if manual_qr.startswith("https://") else "")
     return {
         "order_id": order_id,
         "amount": plan["price"],
         "name": plan["name"],
-        "pay_url": "",
+        "pay_url": manual_pay_url,
         "embed_pay_url": "",
         "pay_method": "manual_review",
         "provider": "manual_review",
         "return_url": _payment_return_url(order_id),
-        "qr_code": MANUAL_PAYMENT_QR_URL.strip(),
-        "qr_image_url": MANUAL_PAYMENT_QR_URL.strip(),
+        "qr_code": manual_qr,
+        "qr_image_url": _alipay_qr_display_url(manual_qr) or manual_qr,
         "display_mode": "manual_review",
         "manual_review": True,
         "manual_label": MANUAL_PAYMENT_LABEL,
@@ -391,10 +393,11 @@ async def _build_order_payment_payload(order_id: str, plan: dict, mobile: bool) 
             code = precreate.get("code")
             qr_code = precreate.get("qr_code") or precreate.get("qr_code_url")
             if code == "10000" and qr_code:
+                pay_url = _alipay_qr_display_url(qr_code) or ""
                 payload.update({
-                    "pay_url": _alipay_qr_display_url(qr_code) or "",
+                    "pay_url": pay_url,
                     "qr_code": qr_code,
-                    "qr_image_url": None,
+                    "qr_image_url": pay_url or None,
                 })
                 return payload
             reason = precreate.get("sub_msg") or precreate.get("msg") or precreate.get("sub_code") or code or "unknown"
@@ -403,7 +406,9 @@ async def _build_order_payment_payload(order_id: str, plan: dict, mobile: bool) 
             print(f"[alipay] precreate exception order={order_id} err={type(exc).__name__}", flush=True)
         if _manual_payment_enabled():
             return _manual_payment_payload(order_id, plan)
-        raise HTTPException(502, "支付宝当面付创建失败，请先检查应用签约状态")
+        raise HTTPException(502, "支付宝当面付创建失败，请先检查应用签约状态或切换人工审核收款")
+    if _manual_payment_enabled():
+        return _manual_payment_payload(order_id, plan)
     return _mock_payment_payload(order_id, plan)
 
 def _build_alipay_form(order_id: str, plan: dict, mobile: bool, embed_qr: bool = False) -> str:
@@ -810,12 +815,11 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
         raise HTTPException(400, "无效套餐")
     _require_user_row(get_db(), uid)
     oid = f"LKJ{int(time.time())}{uuid.uuid4().hex[:6].upper()}"
-    payload = await _build_order_payment_payload(oid, plan, _is_mobile_request(request))
     db = get_db()
     db_execute(db, "INSERT INTO orders (id, user_id, plan_id, amount, credits, status, created_at) VALUES(%s,%s,%s,%s,%s,%s,%s)",
                (oid, uid, r.plan_id, plan["price"], plan["credits"], "pending", datetime.utcnow().isoformat()))
     db.commit()
-    return payload
+    return await _build_order_payment_payload(oid, plan, _is_mobile_request(request))
 
 @app.get("/api/payment/status/{order_id}")
 async def order_status(order_id: str, uid=Depends(current_uid)):

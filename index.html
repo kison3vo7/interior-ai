@@ -515,9 +515,9 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
         <div style="font-size:42px;margin-bottom:8px">🅰️</div>
         <div class="pay-hint">正在生成支付宝二维码…</div>
       </template>
-      <div class="pay-hint" style="margin-top:4px;color:var(--p)">{{ order?.manualReview ? '审核通过后会自动到账并刷新点数' : '支付后会自动返回并刷新点数' }}</div>
+      <div class="pay-hint" style="margin-top:4px;color:var(--p)">{{ order?.manualReview ? '审核通过后会自动到账并刷新点数' : (shouldLaunchExternalPay(order) ? '将尝试直接拉起支付宝，支付完成后回到页面即可' : '支付后会自动返回并刷新点数') }}</div>
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-primary" style="flex:1" @click="order?.manualReview ? submitPaymentProof() : openPayUrl()">{{ order?.manualReview ? '提交付款截图' : (order?.qrCodeDataUrl ? '已扫码后点这里刷新' : '重新获取二维码') }}</button>
+        <button class="btn btn-primary" style="flex:1" @click="order?.manualReview ? submitPaymentProof() : openPayUrl()">{{ order?.manualReview ? '提交付款截图' : (shouldLaunchExternalPay(order) ? '打开支付宝支付' : (order?.qrCodeDataUrl ? '已扫码后点这里刷新' : '重新获取二维码')) }}</button>
         <button class="btn btn-ghost" style="flex:1" @click="closeOrderModal">取消</button>
       </div>
     </div>
@@ -1064,6 +1064,8 @@ const app = createApp({
         this.persistPendingOrder();
         if (this.order.manualReview) {
           this.pollPayment(this.order.order_id);
+        } else if (this.shouldLaunchExternalPay(this.order)) {
+          this.openPayUrl();
         } else if (!this.order.qrCodeDataUrl && !this.order.embedPayUrl) {
           this.openPayUrl();
         } else {
@@ -1107,9 +1109,23 @@ const app = createApp({
       }
       return '';
     },
+    isMobileClient() {
+      return /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent || '');
+    },
+    shouldLaunchExternalPay(order = this.order) {
+      return !!(order && !order.manualReview && order.pay_url && this.isMobileClient());
+    },
     openPayUrl() {
-      if (!this.order?.pay_url) return;
+      if (!this.order?.order_id) return;
       this.pollPayment(this.order.order_id);
+      if (!this.shouldLaunchExternalPay(this.order) && this.order?.qrCodeDataUrl) return;
+      if (!this.order?.pay_url) return;
+      if (this.isMobileClient()) {
+        window.location.href = this.order.pay_url;
+        return;
+      }
+      const popup = window.open(this.order.pay_url, '_blank', 'noopener,noreferrer');
+      if (!popup) window.location.href = this.order.pay_url;
     },
     async fetchOrderDetails(orderId) {
       const d = await req(`/api/payment/order/${orderId}`);

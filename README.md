@@ -88,11 +88,11 @@ docker compose up --build
 | GET  | /api/generate/status/{job_id} | 查询任务状态 |
 | GET  | /api/generate/history | 历史记录 |
 | POST | /api/payment/create | 创建支付订单 |
-| GET  | /api/payment/checkout/{order_id} | 跳转支付宝收银台 |
+| GET  | /api/payment/checkout/{order_id} | 兼容旧链路的支付宝跳转页 |
 | POST | /api/payment/callback/alipay | 支付宝回调充值 |
 
 ## 待接入（生产必做）
-- [x] 支付宝网页支付下单骨架（待填正式参数）
+- [x] 支付宝纯扫码下单骨架（待填正式参数）
 - [ ] 阿里云 OSS 图片存储
 - [ ] Redis + Celery 异步任务队列（避免 HTTP 超时）
 - [ ] 手机验证码登录（阿里云短信）
@@ -100,10 +100,11 @@ docker compose up --build
 
 ## 生产支付说明
 
-当前后端已支持两种支付模式：
+当前后端已支持三种支付模式，优先级如下：
 
+- 配置完整支付宝参数：优先调用 `alipay.trade.precreate`，桌面端展示支付宝二维码，手机端直接尝试拉起支付宝
+- `precreate` 被支付宝侧拒绝且配置了手动收款码：展示手动二维码并进入人工审核到账流程
 - 未配置支付宝参数：返回本地 `mock` 支付链接，仅开发调试使用
-- 配置完整支付宝参数：自动生成网页支付表单，前端直接跳转支付宝收银台
 
 生产环境至少需要配置：
 
@@ -125,6 +126,17 @@ ALIPAY_NOTIFY_URL=https://interior-ai-aemn.onrender.com/api/payment/callback/ali
 ```
 
 如果后面切正式自定义域名，再把这两个值一起替换成新域名，避免支付返回地址和异步回调地址不一致。
+
+## 支付兜底
+
+如果支付宝当面付 `precreate` 被拒绝，可以配置手动收款二维码作为兜底：
+
+```bash
+MANUAL_PAYMENT_QR_URL=https://你的支付宝收款码图片或链接
+MANUAL_PAYMENT_LABEL=支付宝扫码转账
+```
+
+配置后，订单会展示收款码并进入人工审核流程，不会直接报 502。
 
 ## 线上部署
 
