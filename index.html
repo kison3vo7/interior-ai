@@ -505,26 +505,19 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
         <div v-if="order?.status==='awaiting_review'" class="pay-hint" style="color:#b45309">付款凭证已提交，等待人工审核到账</div>
       </template>
       <template v-else-if="order?.qrCodeDataUrl">
-        <div class="pay-hint" style="margin-top:0;color:var(--p)">请打开支付宝扫一扫下方二维码</div>
+        <div class="pay-hint" style="margin-top:0;color:var(--p)">请使用支付宝扫一扫下方二维码</div>
         <div class="pay-qr-wrap">
           <img class="pay-qr-img" :src="order.qrCodeDataUrl" alt="支付宝支付二维码">
         </div>
-        <div class="pay-hint" style="color:#b45309">若支付宝提示 AE150003030，通常是收款账号和付款账号一致。请换一个支付宝账号，或改用电脑端付款。</div>
-        <div class="pay-hint">如果扫码无响应，可点击下方按钮打开支付宝收银台</div>
-      </template>
-      <template v-else-if="order?.embedPayUrl">
-        <div class="pay-hint" style="margin-top:0;color:var(--p)">请直接使用支付宝扫描下方官方支付码</div>
-        <iframe class="pay-iframe" :src="order.embedPayUrl" title="支付宝支付"></iframe>
-        <div class="pay-hint" style="color:#b45309">若支付宝提示 AE150003030，通常是收款账号和付款账号一致。请换一个支付宝账号，或改用电脑端付款。</div>
-        <div class="pay-hint">如果内嵌页显示异常，可点击下方按钮跳转支付宝收银台</div>
+        <div class="pay-hint">二维码有效期约 15 分钟，支付完成后当前页面会自动刷新点数。</div>
       </template>
       <template v-else>
         <div style="font-size:42px;margin-bottom:8px">🅰️</div>
-        <div class="pay-hint">正在打开支付宝收银台</div>
+        <div class="pay-hint">正在生成支付宝二维码…</div>
       </template>
       <div class="pay-hint" style="margin-top:4px;color:var(--p)">{{ order?.manualReview ? '审核通过后会自动到账并刷新点数' : '支付后会自动返回并刷新点数' }}</div>
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-primary" style="flex:1" @click="order?.manualReview ? submitPaymentProof() : openPayUrl()">{{ order?.manualReview ? '提交付款截图' : (order?.qrCodeDataUrl ? '电脑端付款' : '立即打开') }}</button>
+        <button class="btn btn-primary" style="flex:1" @click="order?.manualReview ? submitPaymentProof() : openPayUrl()">{{ order?.manualReview ? '提交付款截图' : (order?.qrCodeDataUrl ? '已扫码后点这里刷新' : '重新获取二维码') }}</button>
         <button class="btn btn-ghost" style="flex:1" @click="closeOrderModal">取消</button>
       </div>
     </div>
@@ -1116,14 +1109,6 @@ const app = createApp({
     },
     openPayUrl() {
       if (!this.order?.pay_url) return;
-      const url = this.order.pay_url;
-      const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-      if (mobile) {
-        window.location.href = url;
-      } else {
-        const win = window.open(url, '_blank', 'noopener,noreferrer');
-        if (!win) window.location.href = url;
-      }
       this.pollPayment(this.order.order_id);
     },
     async fetchOrderDetails(orderId) {

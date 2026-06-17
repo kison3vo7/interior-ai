@@ -369,84 +369,39 @@ def _alipay_qr_display_url(qr_code: str | None) -> str | None:
         return f"https://mobilecodec.alipay.com/show.htm?code={code}"
     return qr_code if qr_code.startswith("https://") else None
 
-def _disable_alipay_precreate(reason: str) -> None:
-    global ALIPAY_PRECREATE_ALLOWED
-    if ALIPAY_PRECREATE_ALLOWED:
-        print(f"[alipay] disable precreate fallback reason={reason}", flush=True)
-    ALIPAY_PRECREATE_ALLOWED = False
-
-async def _extract_page_pay_qr(order_id: str, plan: dict) -> dict | None:
-    html = _build_alipay_form(order_id, plan, mobile=False, embed_qr=True)
-    inputs = {k: unescape(v) for k, v in re.findall(r'name="([^"]+)" value="([^"]*)"', html)}
-    if not inputs:
-        return None
-    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-        resp = await client.post(ALIPAY_GATEWAY, data=inputs)
-    text = resp.content.decode("gb18030", errors="ignore")
-    m = re.search(r'name="qrCode"[^>]*value="([^"]+)"', text)
-    qr_code = m.group(1) if m else None
-    m = re.search(r'name="qrImgUrl"[^>]*value="([^"]+)"', text)
-    qr_img_url = m.group(1) if m else None
-    if qr_code or qr_img_url:
-        return {"qr_code": qr_code, "qr_image_url": qr_img_url}
-    print(f"[alipay] page qr not found order={order_id} final_url={resp.url}", flush=True)
-    return None
-
 async def _build_order_payment_payload(order_id: str, plan: dict, mobile: bool) -> dict:
     if _alipay_enabled():
-        pay_url = f"{_site_base_url()}/api/payment/checkout/{order_id}"
         payload = {
             "order_id": order_id,
             "amount": plan["price"],
             "name": plan["name"],
-            "pay_url": pay_url,
-            "embed_pay_url": f"{pay_url}?embed=1" if not mobile else None,
-            "pay_method": "wap" if mobile else "page",
+            "pay_url": "",
+            "embed_pay_url": None,
+            "pay_method": "precreate",
             "provider": "alipay",
             "return_url": _payment_return_url(order_id),
             "qr_code": None,
             "qr_image_url": None,
-            "display_mode": "iframe" if not mobile else "redirect",
+            "display_mode": "qr",
             "manual_review": False,
             "manual_label": "",
         }
-        if ALIPAY_PRECREATE_ALLOWED and not mobile:
-            try:
-                precreate = await _precreate_alipay_trade(order_id, plan)
-                code = precreate.get("code")
-                if code == "10000" and (precreate.get("qr_code") or precreate.get("qr_code_url")):
-                    qr_code = precreate.get("qr_code") or precreate.get("qr_code_url")
-                    payload.update({
-                        "pay_url": _alipay_qr_display_url(qr_code) or pay_url,
-                        "embed_pay_url": None,
-                        "pay_method": "precreate",
-                        "qr_code": qr_code,
-                        "qr_image_url": None,
-                        "display_mode": "qr",
-                    })
-                    return payload
-                sub_code = precreate.get("sub_code") or code or "unknown"
-                _disable_alipay_precreate(f"precreate rejected {sub_code}")
-            except Exception as exc:
-                _disable_alipay_precreate(f"precreate exception {type(exc).__name__}")
-        if not mobile:
-            try:
-                page_qr = await _extract_page_pay_qr(order_id, plan)
-                if page_qr and (page_qr.get("qr_code") or page_qr.get("qr_image_url")):
-                    payload.update({
-                        "pay_method": "page_qr",
-                        "qr_code": page_qr.get("qr_code"),
-                        "qr_image_url": page_qr.get("qr_image_url"),
-                        "display_mode": "qr",
-                    })
-                    return payload
-            except Exception as exc:
-                print(f"[alipay] page qr extract failed order={order_id} err={type(exc).__name__}", flush=True)
-        if _manual_payment_enabled():
-            return _manual_payment_payload(order_id, plan)
-        return payload
-    if _manual_payment_enabled():
-        return _manual_payment_payload(order_id, plan)
+        try:
+            precreate = await _precreate_alipay_trade(order_id, plan)
+            code = precreate.get("code")
+            qr_code = precreate.get("qr_code") or precreate.get("qr_code_url")
+            if code == "10000" and qr_code:
+                payload.update({
+                    "pay_url": _alipay_qr_display_url(qr_code) or "",
+                    "qr_code": qr_code,
+                    "qr_image_url": None,
+                })
+                return payload
+            reason = precreate.get("sub_msg") or precreate.get("msg") or precreate.get("sub_code") or code or "unknown"
+            print(f"[alipay] precreate rejected order={order_id} reason={reason}", flush=True)
+        except Exception as exc:
+            print(f"[alipay] precreate exception order={order_id} err={type(exc).__name__}", flush=True)
+        raise HTTPException(502, "支付宝当面付创建失败，请先检查应用签约状态")
     return _mock_payment_payload(order_id, plan)
 
 def _build_alipay_form(order_id: str, plan: dict, mobile: bool, embed_qr: bool = False) -> str:
@@ -853,11 +808,12 @@ async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
         raise HTTPException(400, "无效套餐")
     _require_user_row(get_db(), uid)
     oid = f"LKJ{int(time.time())}{uuid.uuid4().hex[:6].upper()}"
+    payload = await _build_order_payment_payload(oid, plan, _is_mobile_request(request))
     db = get_db()
     db_execute(db, "INSERT INTO orders (id, user_id, plan_id, amount, credits, status, created_at) VALUES(%s,%s,%s,%s,%s,%s,%s)",
                (oid, uid, r.plan_id, plan["price"], plan["credits"], "pending", datetime.utcnow().isoformat()))
     db.commit()
-    return await _build_order_payment_payload(oid, plan, _is_mobile_request(request))
+    return payload
 
 @app.get("/api/payment/status/{order_id}")
 async def order_status(order_id: str, uid=Depends(current_uid)):
