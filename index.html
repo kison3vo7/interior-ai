@@ -273,6 +273,22 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
         </div>
         <button class="btn btn-ghost" @click="loadReviewOrders">刷新</button>
       </div>
+      <div class="plan" style="cursor:default;margin-bottom:18px">
+        <div style="font-weight:800;font-size:16px;margin-bottom:10px">手动收款码设置</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">当支付宝自动下单失败时，站点会回退到这里配置的支付宝收款码。</div>
+        <div class="field" style="margin-bottom:10px">
+          <label>支付宝收款码链接</label>
+          <input v-model="manualPaymentConfig.qr_url" placeholder="https://... 或 https://mobilecodec.alipay.com/show.htm?code=...">
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label>提示文案</label>
+          <input v-model="manualPaymentConfig.label" placeholder="支付宝扫码转账">
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" @click="saveManualPaymentConfig">保存收款码</button>
+          <span style="font-size:12px;color:var(--muted);align-self:center">保存后，新订单会直接使用这个兜底收款流程。</span>
+        </div>
+      </div>
       <div v-if="!reviewOrders.length" style="color:var(--muted);font-size:14px">当前没有待审核订单</div>
       <div v-else style="display:grid;gap:12px">
         <div v-for="item in reviewOrders" :key="item.order_id" class="plan" style="cursor:default">
@@ -697,6 +713,7 @@ const app = createApp({
       paymentProofFileName: '',
       paymentProofNote: '',
       reviewOrders: [],
+      manualPaymentConfig: { qr_url:'', label:'支付宝扫码转账' },
       loading: false,
       isDemoMode: false,
       toastMsg: '',
@@ -934,12 +951,44 @@ const app = createApp({
       if (!this.isReviewer) return;
       await this.syncCurrentUser();
       this.page='review';
+      await this.loadManualPaymentConfig();
       await this.loadReviewOrders();
+    },
+    async loadManualPaymentConfig() {
+      if (!this.isReviewer) return;
+      try {
+        const d = await req('/api/payment/manual-config');
+        this.manualPaymentConfig = {
+          qr_url: d?.qr_url || '',
+          label: d?.label || '支付宝扫码转账',
+        };
+      } catch (e) {
+        this.toast(e.message, 'error');
+      }
     },
     async loadReviewOrders() {
       if (!this.isReviewer) return;
       try {
         this.reviewOrders = await req('/api/payment/review-list');
+      } catch (e) {
+        this.toast(e.message, 'error');
+      }
+    },
+    async saveManualPaymentConfig() {
+      if (!this.isReviewer) return;
+      try {
+        const d = await req('/api/payment/manual-config', {
+          method:'POST',
+          body:JSON.stringify({
+            qr_url: this.manualPaymentConfig.qr_url || '',
+            label: this.manualPaymentConfig.label || '支付宝扫码转账',
+          }),
+        });
+        this.manualPaymentConfig = {
+          qr_url: d?.qr_url || '',
+          label: d?.label || '支付宝扫码转账',
+        };
+        this.toast('手动收款码已保存');
       } catch (e) {
         this.toast(e.message, 'error');
       }

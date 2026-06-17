@@ -56,6 +56,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 INDEX_HTML = ROOT_DIR / "index.html"
 PAYMENT_PROOF_DIR = UPLOAD_ROOT / "payment-proofs"
 PAYMENT_PROOF_DIR.mkdir(parents=True, exist_ok=True)
+PAYMENT_CONFIG_DIR = UPLOAD_ROOT / "payment-config"
+PAYMENT_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 ALIPAY_PRECREATE_ALLOWED = True
 TEST_ACCOUNT_PHONE = "15251872890"
 TEST_ACCOUNT_MIN_CREDITS = 500
@@ -104,6 +106,10 @@ def get_db():
             status TEXT DEFAULT 'pending',
             created_at TEXT
         )""")
+        cur.execute("""CREATE TABLE IF NOT EXISTS app_settings(
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )""")
         cur.execute("""
             ALTER TABLE orders
             ADD COLUMN IF NOT EXISTS payment_proof_url TEXT
@@ -131,6 +137,10 @@ def get_db():
     conn.execute("""CREATE TABLE IF NOT EXISTS orders(
         id TEXT PRIMARY KEY, user_id INTEGER, plan_id TEXT,
         amount INTEGER, credits INTEGER, status TEXT DEFAULT 'pending', created_at TEXT)""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS app_settings(
+        key TEXT PRIMARY KEY,
+        value TEXT
+    )""")
     existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(orders)").fetchall()}
     if "payment_proof_url" not in existing_columns:
         conn.execute("ALTER TABLE orders ADD COLUMN payment_proof_url TEXT")
@@ -291,11 +301,51 @@ def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: s
             pass
         raise
 
+def _get_setting(key: str) -> str:
+    db = get_db()
+    row = db_execute(db, "SELECT value FROM app_settings WHERE key=%s", (key,)).fetchone()
+    return row[0] if row and row[0] is not None else ""
+
+def _set_setting(key: str, value: str) -> None:
+    db = get_db()
+    if USING_POSTGRES:
+        db_execute(
+            db,
+            """
+            INSERT INTO app_settings(key, value) VALUES(%s, %s)
+            ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value
+            """,
+            (key, value),
+        )
+    else:
+        db_execute(
+            db,
+            "INSERT INTO app_settings(key, value) VALUES(%s, %s) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (key, value),
+        )
+    db.commit()
+
+def _manual_payment_config() -> dict:
+    config = {}
+    raw = _get_setting("manual_payment_config")
+    if raw:
+        try:
+            config = json.loads(raw)
+        except Exception:
+            config = {}
+    qr_url = (config.get("qr_url") or MANUAL_PAYMENT_QR_URL or "").strip()
+    label = (config.get("label") or MANUAL_PAYMENT_LABEL or "支付宝扫码转账").strip() or "支付宝扫码转账"
+    return {
+        "qr_url": qr_url,
+        "label": label,
+    }
+
 def _manual_payment_enabled() -> bool:
-    return bool(MANUAL_PAYMENT_QR_URL.strip())
+    return bool(_manual_payment_config().get("qr_url"))
 
 def _manual_payment_payload(order_id: str, plan: dict) -> dict:
-    manual_qr = MANUAL_PAYMENT_QR_URL.strip()
+    config = _manual_payment_config()
+    manual_qr = config["qr_url"]
     manual_pay_url = _alipay_qr_display_url(manual_qr) or (manual_qr if manual_qr.startswith("https://") else "")
     return {
         "order_id": order_id,
@@ -310,7 +360,7 @@ def _manual_payment_payload(order_id: str, plan: dict) -> dict:
         "qr_image_url": _alipay_qr_display_url(manual_qr) or manual_qr,
         "display_mode": "manual_review",
         "manual_review": True,
-        "manual_label": MANUAL_PAYMENT_LABEL,
+        "manual_label": config["label"],
     }
 
 def _mock_payment_payload(order_id: str, plan: dict) -> dict:
@@ -808,6 +858,10 @@ class OrderReq(BaseModel):
 class ManualReviewApproveReq(BaseModel):
     order_id: str
 
+class ManualPaymentConfigReq(BaseModel):
+    qr_url: str = ""
+    label: str = "支付宝扫码转账"
+
 @app.post("/api/payment/create")
 async def create_order(r: OrderReq, request: Request, uid=Depends(current_uid)):
     plan = PLANS.get(r.plan_id)
@@ -1005,6 +1059,25 @@ def payment_review_list(uid=Depends(current_uid)):
         }
         for r in rows
     ]
+
+@app.get("/api/payment/manual-config")
+def get_manual_payment_config(uid=Depends(current_uid)):
+    db = get_db()
+    user = _require_user_row(db, uid)
+    if user[1] != TEST_ACCOUNT_PHONE:
+        raise HTTPException(403, "无权限")
+    return _manual_payment_config()
+
+@app.post("/api/payment/manual-config")
+def set_manual_payment_config(r: ManualPaymentConfigReq, uid=Depends(current_uid)):
+    db = get_db()
+    user = _require_user_row(db, uid)
+    if user[1] != TEST_ACCOUNT_PHONE:
+        raise HTTPException(403, "无权限")
+    qr_url = (r.qr_url or "").strip()
+    label = (r.label or "支付宝扫码转账").strip() or "支付宝扫码转账"
+    _set_setting("manual_payment_config", json.dumps({"qr_url": qr_url, "label": label}, ensure_ascii=False))
+    return {"ok": True, "qr_url": qr_url, "label": label}
 
 @app.post("/api/payment/review/approve")
 def approve_payment_review(r: ManualReviewApproveReq, uid=Depends(current_uid)):
