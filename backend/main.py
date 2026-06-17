@@ -359,7 +359,9 @@ def _manual_payment_config() -> dict:
     default_qr_url = ""
     if DEFAULT_MANUAL_PAYMENT_QR_FILE.exists():
         default_qr_url = f"{_site_base_url()}/uploads/payment-config/{DEFAULT_MANUAL_PAYMENT_QR_FILE.name}"
-    qr_url = (config.get("qr_url") or MANUAL_PAYMENT_QR_URL or default_qr_url or "").strip()
+    # Always prefer the bundled QR file we ship with the deployment so stale DB
+    # config cannot keep serving an expired code after we replace the image.
+    qr_url = (default_qr_url or MANUAL_PAYMENT_QR_URL or config.get("qr_url") or "").strip()
     label = (config.get("label") or MANUAL_PAYMENT_LABEL or "支付宝扫码转账").strip() or "支付宝扫码转账"
     return {
         "qr_url": qr_url,
