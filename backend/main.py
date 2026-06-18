@@ -69,7 +69,7 @@ def _resolve_path(filepath: str) -> Path:
         return p
     return (Path(__file__).resolve().parent / p).resolve()
 
-def _alipay_priv_bytes() -> bytes | None:
+def _alipay_priv_bytes():
     if ALIPAY_PRIVATE_KEY_B64:
         try:
             return base64.b64decode(ALIPAY_PRIVATE_KEY_B64)
@@ -81,7 +81,7 @@ def _alipay_priv_bytes() -> bytes | None:
         return _resolve_path(ALIPAY_PRIVATE_KEY_PATH).read_bytes()
     return None
 
-def _alipay_pub_bytes() -> bytes | None:
+def _alipay_pub_bytes():
     if ALIPAY_PUBLIC_KEY_B64:
         try:
             return base64.b64decode(ALIPAY_PUBLIC_KEY_B64)
