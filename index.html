@@ -421,8 +421,11 @@ async function req(path, opts={}) {
   const h = {};
   if (token) h['Authorization'] = `Bearer ${token}`;
   if (opts.body && !(opts.body instanceof FormData)) h['Content-Type'] = 'application/json';
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 25000);
   try {
-    const r = await fetch(API_BASE + path, {...opts, headers:{...h,...(opts.headers||{})}});
+    const r = await fetch(API_BASE + path, {...opts, signal: ctrl.signal, headers:{...h,...(opts.headers||{})}});
+    clearTimeout(t);
     if (!r.ok) {
       const e = await r.json().catch(()=>({detail:r.statusText}));
       if (r.status === 401) {
@@ -443,6 +446,8 @@ async function req(path, opts={}) {
     }
     return r.json();
   } catch(e) {
+    clearTimeout(t);
+    if (e.name==='AbortError') throw new Error('服务器响应超时，Render冷启动需约50秒，请关闭弹窗重新点击充值');
     if (e.message==='Failed to fetch'||e.message.includes('Load failed')||e.message.includes('NetworkError')) {
       DEMO_MODE = true;
       if (window._vueApp) window._vueApp.isDemoMode = true;

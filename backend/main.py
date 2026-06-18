@@ -71,7 +71,10 @@ def _resolve_path(filepath: str) -> Path:
 
 def _alipay_priv_bytes() -> bytes | None:
     if ALIPAY_PRIVATE_KEY_B64:
-        return base64.b64decode(ALIPAY_PRIVATE_KEY_B64)
+        try:
+            return base64.b64decode(ALIPAY_PRIVATE_KEY_B64)
+        except Exception:
+            pass
     if ALIPAY_PRIVATE_KEY:
         return ALIPAY_PRIVATE_KEY.replace("\\n", "\n").encode()
     if ALIPAY_PRIVATE_KEY_PATH:
@@ -80,7 +83,10 @@ def _alipay_priv_bytes() -> bytes | None:
 
 def _alipay_pub_bytes() -> bytes | None:
     if ALIPAY_PUBLIC_KEY_B64:
-        return base64.b64decode(ALIPAY_PUBLIC_KEY_B64)
+        try:
+            return base64.b64decode(ALIPAY_PUBLIC_KEY_B64)
+        except Exception:
+            pass
     if ALIPAY_PUBLIC_KEY:
         return ALIPAY_PUBLIC_KEY.replace("\\n", "\n").encode()
     if ALIPAY_PUBLIC_KEY_PATH:
