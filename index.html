@@ -344,7 +344,8 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
     <div class="amount">¥{{ order?.amount }}</div>
     <div style="font-size:14px;color:var(--muted);margin-bottom:16px">{{ order?.name }}</div>
     <div class="qr-box">
-      <img :src="orderQrSrc" alt="支付二维码">
+      <!-- 真实微信支付时替换为 code_url 生成的二维码 -->
+      <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(order?.pay_url||'')}`" alt="支付二维码">
       <div class="qr-hint">{{ order?.provider==='alipay' ? '请使用支付宝扫码完成支付' : '请使用微信扫码完成支付' }}</div>
       <div class="qr-hint" style="margin-top:4px;color:var(--p)">正在等待支付...</div>
     </div>
@@ -621,15 +622,6 @@ const app = createApp({
       }
     },
     _progTimer: null,
-    orderQrSrc() {
-      if (!this.order) return '';
-      if (this.order.provider === 'alipay' && this.order.qr_image_url) return this.order.qr_image_url;
-      if (this.order.provider === 'alipay' && this.order.pay_url?.startsWith('https://qr.alipay.com/')) {
-        const code = this.order.pay_url.replace(/^https:\/\/qr\.alipay\.com\//i, '').replace(/\/+$/, '');
-        return `https://mobilecodec.alipay.com/show.htm?code=${encodeURIComponent(code)}`;
-      }
-      return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(this.order.pay_url||'')}`;
-    },
     startProgAnim() {
       this.progPct=0; this.progLabel='正在分析空间结构...';
       this._progTimer=setInterval(()=>{ if(this.progPct<85) this.progPct+=Math.random()*3; },500);
