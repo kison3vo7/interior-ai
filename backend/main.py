@@ -6,6 +6,7 @@ from io import BytesIO
 import httpx, bcrypt, jwt
 from PIL import Image
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, BackgroundTasks, Request
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
@@ -24,7 +25,8 @@ WECHAT_MCHID = os.getenv("WECHAT_MCHID", "")
 WECHAT_PRIVATE_KEY_PATH = os.getenv("WECHAT_PRIVATE_KEY_PATH", "")
 WECHAT_CERT_SERIAL_NO = os.getenv("WECHAT_CERT_SERIAL_NO", "")
 WECHAT_NOTIFY_URL = os.getenv("WECHAT_NOTIFY_URL", "")
-ALIPAY_APPID = os.getenv("ALIPAY_APPID", "")
+# Render 上曾混用两种 key，统一兼容，避免因变量名差异导致支付失败。
+ALIPAY_APPID = os.getenv("ALIPAY_APPID", "") or os.getenv("ALIPAY_APP_ID", "")
 ALIPAY_PRIVATE_KEY_PATH = os.getenv("ALIPAY_PRIVATE_KEY_PATH", "")
 ALIPAY_PUBLIC_KEY_PATH = os.getenv("ALIPAY_PUBLIC_KEY_PATH", "")
 ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")  # 密钥内容（优先）
@@ -38,6 +40,11 @@ DB_PATH      = DATA_DIR / "app.db"
 app = FastAPI(title="灵空间AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+@app.get("/")
+def home():
+    index_path = Path(__file__).resolve().parent.parent / "index.html"
+    return HTMLResponse(index_path.read_text(encoding="utf-8"))
 
 security = HTTPBearer()
 
