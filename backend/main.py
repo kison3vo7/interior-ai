@@ -6,7 +6,6 @@ from io import BytesIO
 import httpx, bcrypt, jwt
 from PIL import Image
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, BackgroundTasks, Request
-from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
@@ -25,12 +24,13 @@ WECHAT_MCHID = os.getenv("WECHAT_MCHID", "")
 WECHAT_PRIVATE_KEY_PATH = os.getenv("WECHAT_PRIVATE_KEY_PATH", "")
 WECHAT_CERT_SERIAL_NO = os.getenv("WECHAT_CERT_SERIAL_NO", "")
 WECHAT_NOTIFY_URL = os.getenv("WECHAT_NOTIFY_URL", "")
-# Render 上曾混用两种 key，统一兼容，避免因变量名差异导致支付失败。
-ALIPAY_APPID = os.getenv("ALIPAY_APPID", "") or os.getenv("ALIPAY_APP_ID", "")
+ALIPAY_APPID = os.getenv("ALIPAY_APPID", "")
 ALIPAY_PRIVATE_KEY_PATH = os.getenv("ALIPAY_PRIVATE_KEY_PATH", "")
 ALIPAY_PUBLIC_KEY_PATH = os.getenv("ALIPAY_PUBLIC_KEY_PATH", "")
-ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")  # 密钥内容（优先）
-ALIPAY_PUBLIC_KEY = os.getenv("ALIPAY_PUBLIC_KEY", "")    # 公钥内容（优先）
+ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")  # 密钥内容（优先于文件）
+ALIPAY_PUBLIC_KEY = os.getenv("ALIPAY_PUBLIC_KEY", "")    # 公钥内容（优先于文件）
+ALIPAY_PRIVATE_KEY_B64 = os.getenv("ALIPAY_PRIVATE_KEY_B64", "")  # base64编码（Render推荐用这个）
+ALIPAY_PUBLIC_KEY_B64 = os.getenv("ALIPAY_PUBLIC_KEY_B64", "")    # base64编码（Render推荐用这个）
 ALIPAY_NOTIFY_URL = os.getenv("ALIPAY_NOTIFY_URL", "")
 DOMAIN = os.getenv("DOMAIN", "")
 UPLOAD_DIR   = Path("uploads"); UPLOAD_DIR.mkdir(exist_ok=True)
@@ -40,11 +40,6 @@ DB_PATH      = DATA_DIR / "app.db"
 app = FastAPI(title="灵空间AI")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-@app.get("/")
-def home():
-    index_path = Path(__file__).resolve().parent.parent / "index.html"
-    return HTMLResponse(index_path.read_text(encoding="utf-8"))
 
 security = HTTPBearer()
 
@@ -66,7 +61,7 @@ def get_db():
     return conn
 
 def _alipay_enabled() -> bool:
-    return (ALIPAY_APPID and (ALIPAY_PRIVATE_KEY or ALIPAY_PRIVATE_KEY_PATH) and (ALIPAY_PUBLIC_KEY or ALIPAY_PUBLIC_KEY_PATH))
+    return ALIPAY_APPID and (_alipay_priv_bytes() is not None) and (_alipay_pub_bytes() is not None)
 
 def _resolve_path(filepath: str) -> Path:
     p = Path(filepath)
@@ -74,15 +69,27 @@ def _resolve_path(filepath: str) -> Path:
         return p
     return (Path(__file__).resolve().parent / p).resolve()
 
-def _read_key(filepath: str, inline: str) -> bytes:
-    if inline:
-        return inline.replace("\\n", "\n").encode()
-    return _resolve_path(filepath).read_bytes()
+def _alipay_priv_bytes() -> bytes | None:
+    if ALIPAY_PRIVATE_KEY_B64:
+        return base64.b64decode(ALIPAY_PRIVATE_KEY_B64)
+    if ALIPAY_PRIVATE_KEY:
+        return ALIPAY_PRIVATE_KEY.replace("\\n", "\n").encode()
+    if ALIPAY_PRIVATE_KEY_PATH:
+        return _resolve_path(ALIPAY_PRIVATE_KEY_PATH).read_bytes()
+    return None
+
+def _alipay_pub_bytes() -> bytes | None:
+    if ALIPAY_PUBLIC_KEY_B64:
+        return base64.b64decode(ALIPAY_PUBLIC_KEY_B64)
+    if ALIPAY_PUBLIC_KEY:
+        return ALIPAY_PUBLIC_KEY.replace("\\n", "\n").encode()
+    if ALIPAY_PUBLIC_KEY_PATH:
+        return _resolve_path(ALIPAY_PUBLIC_KEY_PATH).read_bytes()
+    return None
 
 def _alipay_sign(params: dict) -> str:
     raw = "&".join(f"{k}={v}" for k, v in sorted(params.items()) if v and k not in ("sign", "sign_type"))
-    priv = serialization.load_pem_private_key(
-        _read_key(ALIPAY_PRIVATE_KEY_PATH, ALIPAY_PRIVATE_KEY), password=None)
+    priv = serialization.load_pem_private_key(_alipay_priv_bytes(), password=None)
     return base64.b64encode(priv.sign(raw.encode(), padding.PKCS1v15(), hashes.SHA256())).decode()
 
 async def create_alipay_order(order_id: str, plan: dict) -> dict:
@@ -104,22 +111,11 @@ async def create_alipay_order(order_id: str, plan: dict) -> dict:
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post("https://openapi.alipay.com/gateway.do", data=params)
     if not resp.is_success:
-        print(f"[alipay] precreate http_error order={order_id} status={resp.status_code} body={resp.text}", flush=True)
-        raise RuntimeError(f"支付宝预下单失败: HTTP {resp.status_code} {resp.text}")
+        raise RuntimeError(f"支付宝预下单失败: {resp.text}")
     data = resp.json()
-    precreate = data.get("alipay_trade_precreate_response", {})
-    code = precreate.get("code")
-    if code != "10000":
-        sub_code = precreate.get("sub_code", "")
-        sub_msg = precreate.get("sub_msg", "")
-        msg = precreate.get("msg", "")
-        print(
-            f"[alipay] precreate rejected order={order_id} code={code} sub_code={sub_code} msg={msg} sub_msg={sub_msg} raw={json.dumps(data, ensure_ascii=False)}",
-            flush=True,
-        )
-        reason = sub_msg or msg or sub_code or code or "unknown"
-        raise RuntimeError(f"支付宝预下单失败: {reason}")
-    qr_code = precreate["qr_code"]
+    if data.get("alipay_trade_precreate_response", {}).get("code") != "10000":
+        raise RuntimeError(f"支付宝预下单失败: {data}")
+    qr_code = data["alipay_trade_precreate_response"]["qr_code"]
     return {"order_id": order_id, "amount": plan["price"], "name": plan["name"],
             "pay_url": qr_code, "provider": "alipay"}
 
@@ -461,7 +457,6 @@ async def create_order(r: OrderReq, uid=Depends(current_uid)):
         try:
             return await create_alipay_order(oid, plan)
         except Exception as e:
-            print(f"[alipay] create_order exception order={oid} err={type(e).__name__} detail={e}", flush=True)
             db.execute("UPDATE orders SET status='failed' WHERE id=?", (oid,))
             db.commit()
             raise HTTPException(500, str(e))
@@ -513,7 +508,7 @@ async def alipay_cb(request: Request):
     raw = "&".join(f"{k}={v}" for k, v in sorted(params.items()) if v and k != "sign")
 
     try:
-        pub_key = serialization.load_pem_public_key(_read_key(ALIPAY_PUBLIC_KEY_PATH, ALIPAY_PUBLIC_KEY))
+        pub_key = serialization.load_pem_public_key(_alipay_pub_bytes())
         pub_key.verify(base64.b64decode(sign), raw.encode(), padding.PKCS1v15(), hashes.SHA256())
     except Exception:
         raise HTTPException(400, "支付宝签名验证失败")
