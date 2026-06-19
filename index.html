@@ -489,7 +489,8 @@ const API_BASE = window.__API__ || (
 );
 const IS_LOCAL_DEMO_ALLOWED = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 let DEMO_MODE = false; // only auto-set for local/offline preview
-const ORDER_STORAGE_KEY = 'lkj_pending_order';
+const ORDER_STORAGE_KEY = 'lkj_pending_order_v2';
+const ORDER_STORAGE_VERSION = '2026-06-19-alipay-live';
 const ACCOUNT_STORAGE_KEY = 'lkj_account';
 
 // Demo state (in-memory)
@@ -735,6 +736,7 @@ const app = createApp({
     persistPendingOrder() {
       if (!this.order?.order_id) return;
       localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify({
+        version: ORDER_STORAGE_VERSION,
         order_id: this.order.order_id,
         amount: this.order.amount || '',
         name: this.order.name || '支付宝支付',
@@ -831,6 +833,10 @@ const app = createApp({
         const raw = localStorage.getItem(ORDER_STORAGE_KEY);
         if (!raw) return;
         const saved = JSON.parse(raw);
+        if (saved?.version !== ORDER_STORAGE_VERSION) {
+          this.clearPendingOrder();
+          return;
+        }
         if (!saved?.order_id) return;
         this.restoreOrder(saved.order_id, saved);
       } catch {
@@ -992,13 +998,20 @@ const app = createApp({
       if (!this.user) { this.modal=null; this.openAuth('register'); return; }
       await this.syncCurrentUser();
       this.loading=true;
+      this.cancelPaymentPolling();
+      this.order = null;
+      this.clearPendingOrder();
       try {
         const d = await req('/api/payment/create', {method:'POST', body:JSON.stringify({plan_id:planId})});
         this.order = this.normalizeOrderPayload(d, { status:'pending' });
         this.modal='order';
         this.persistPendingOrder();
         this.pollPayment(this.order.order_id);
-      } catch(e) { this.toast(e.message,'error'); }
+      } catch(e) {
+        this.order = null;
+        this.clearPendingOrder();
+        this.toast(e.message,'error');
+      }
       finally { this.loading=false; }
     },
     normalizeQrImageUrl(text) {
@@ -1047,6 +1060,10 @@ const app = createApp({
         this.persistPendingOrder();
       } catch (e) {
         if (e?.message) console.warn('restoreOrder failed', e.message);
+        this.cancelPaymentPolling();
+        this.order = null;
+        this.modal = null;
+        this.clearPendingOrder();
       }
       this.pollPayment(orderId);
     },

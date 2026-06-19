@@ -358,6 +358,7 @@ def _payment_payload_base(order_id: str, plan: dict, status: str = "pending") ->
         "return_url": _payment_return_url(order_id),
         "qr_code": None,
         "qr_image_url": None,
+        "app_id": ALIPAY_APP_ID,
     }
 
 async def _build_order_payment_payload(order_id: str, plan: dict) -> dict:
@@ -381,6 +382,8 @@ async def _build_order_payment_payload(order_id: str, plan: dict) -> dict:
         return payload
     reason = precreate.get("sub_msg") or precreate.get("msg") or precreate.get("sub_code") or code or "unknown"
     print(f"[alipay] precreate rejected order={order_id} reason={reason}", flush=True)
+    if "ACCESS_FORBIDDEN" in str(reason):
+        raise HTTPException(502, "当前支付宝应用未开通当面付，后台仅开通了电脑网站支付/手机网站支付")
     raise HTTPException(502, f"支付宝当面付创建失败：{reason}")
 
 async def _sync_alipay_order(order_id: str) -> tuple[bool, str | None]:
