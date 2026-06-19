@@ -48,6 +48,8 @@ DOMAIN = os.getenv("DOMAIN", "")
 ALIPAY_GATEWAY = os.getenv("ALIPAY_GATEWAY", "https://openapi.alipay.com/gateway.do")
 ALIPAY_PRIVATE_KEY_PATH = os.getenv("ALIPAY_PRIVATE_KEY_PATH", "")
 ALIPAY_PUBLIC_KEY_PATH = os.getenv("ALIPAY_PUBLIC_KEY_PATH", "")
+ALIPAY_PRIVATE_KEY_B64 = os.getenv("ALIPAY_PRIVATE_KEY_B64", "")
+ALIPAY_PUBLIC_KEY_B64 = os.getenv("ALIPAY_PUBLIC_KEY_B64", "")
 UPLOAD_DIR   = UPLOAD_ROOT
 DATA_DIR     = DATA_ROOT
 DB_PATH      = DATA_DIR / "app.db"
@@ -185,8 +187,8 @@ def _site_base_url() -> str:
     return "http://127.0.0.1:8000"
 
 def _alipay_enabled() -> bool:
-    has_private = bool(ALIPAY_PRIVATE_KEY or ALIPAY_PRIVATE_KEY_PATH)
-    has_public = bool(ALIPAY_PUBLIC_KEY or ALIPAY_PUBLIC_KEY_PATH)
+    has_private = bool(ALIPAY_PRIVATE_KEY or ALIPAY_PRIVATE_KEY_PATH or ALIPAY_PRIVATE_KEY_B64)
+    has_public = bool(ALIPAY_PUBLIC_KEY or ALIPAY_PUBLIC_KEY_PATH or ALIPAY_PUBLIC_KEY_B64)
     return all([ALIPAY_APP_ID, has_private, has_public, ALIPAY_NOTIFY_URL])
 
 def _normalize_pem(raw: str, kind: str) -> str:
@@ -197,6 +199,11 @@ def _normalize_pem(raw: str, kind: str) -> str:
     return f"-----BEGIN {header}-----\n{value}\n-----END {header}-----"
 
 def _load_alipay_private_key():
+    if ALIPAY_PRIVATE_KEY_B64:
+        return serialization.load_pem_private_key(
+            base64.b64decode(ALIPAY_PRIVATE_KEY_B64),
+            password=None,
+        )
     if ALIPAY_PRIVATE_KEY_PATH:
         return serialization.load_pem_private_key(
             Path(ALIPAY_PRIVATE_KEY_PATH).read_bytes(),
@@ -208,6 +215,8 @@ def _load_alipay_private_key():
     )
 
 def _load_alipay_public_key():
+    if ALIPAY_PUBLIC_KEY_B64:
+        return serialization.load_pem_public_key(base64.b64decode(ALIPAY_PUBLIC_KEY_B64))
     if ALIPAY_PUBLIC_KEY_PATH:
         return serialization.load_pem_public_key(Path(ALIPAY_PUBLIC_KEY_PATH).read_bytes())
     return serialization.load_pem_public_key(
