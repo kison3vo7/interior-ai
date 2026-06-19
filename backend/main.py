@@ -532,3 +532,8 @@ async def alipay_cb(request: Request):
     db.execute("UPDATE users SET credits=credits+? WHERE id=?", (row[1], row[0]))
     db.commit()
     return "success"
+
+# ─── FRONTEND ─────────────────────────────────────────
+FRONTEND_DIR = Path(__file__).resolve().parent.parent
+if (FRONTEND_DIR / "index.html").exists():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
