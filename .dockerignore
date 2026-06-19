@@ -1,0 +1,13 @@
+.DS_Store
+.git
+.gitignore
+.venv
+.venv312
+.venv_render_check
+.playwright-cli
+node_modules
+output
+alipay_submission_pack
+backend/data
+backend/uploads
+*.log

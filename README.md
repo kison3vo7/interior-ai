@@ -88,7 +88,8 @@ docker compose up --build
 | GET  | /api/generate/status/{job_id} | 查询任务状态 |
 | GET  | /api/generate/history | 历史记录 |
 | POST | /api/payment/create | 创建支付订单 |
-| GET  | /api/payment/checkout/{order_id} | 兼容旧链路的支付宝跳转页 |
+| GET  | /api/payment/order/{order_id} | 查询支付订单详情 |
+| GET  | /api/payment/status/{order_id} | 查询支付状态并同步到账 |
 | POST | /api/payment/callback/alipay | 支付宝回调充值 |
 
 ## 待接入（生产必做）
@@ -100,18 +101,23 @@ docker compose up --build
 
 ## 生产支付说明
 
-当前后端已支持三种支付模式，优先级如下：
+当前后端只保留一条支付链：
 
-- 配置完整支付宝参数：优先调用 `alipay.trade.precreate`，桌面端展示支付宝二维码，手机端直接尝试拉起支付宝
-- `precreate` 被支付宝侧拒绝且配置了手动收款码：展示手动二维码并进入人工审核到账流程
-- 未配置支付宝参数：返回本地 `mock` 支付链接，仅开发调试使用
+- 配置完整支付宝参数后，统一调用 `alipay.trade.precreate`
+- 前端展示支付宝当面付二维码
+- 用户支付后由回调和状态轮询同步到账
 
 生产环境至少需要配置：
 
 ```bash
 ALIPAY_APP_ID=2021006147626992
-ALIPAY_PRIVATE_KEY=your_private_key
-ALIPAY_PUBLIC_KEY=alipay_public_key
+# 如果你后台里拿到的是旧命名，也兼容：
+# ALIPAY_APPID=2021006147626992
+ALIPAY_PRIVATE_KEY=your_private_key_pem_content
+ALIPAY_PUBLIC_KEY=alipay_public_key_pem_content
+# 如果平台更适合挂文件，也可以改用：
+# ALIPAY_PRIVATE_KEY_PATH=/app/secrets/alipay_app_private.pem
+# ALIPAY_PUBLIC_KEY_PATH=/app/secrets/alipay_public.pem
 ALIPAY_NOTIFY_URL=https://interior-ai-aemn.onrender.com/api/payment/callback/alipay
 DOMAIN=interior-ai-aemn.onrender.com
 PUBLIC_SITE_URL=https://interior-ai-aemn.onrender.com
@@ -127,23 +133,14 @@ ALIPAY_NOTIFY_URL=https://interior-ai-aemn.onrender.com/api/payment/callback/ali
 
 如果后面切正式自定义域名，再把这两个值一起替换成新域名，避免支付返回地址和异步回调地址不一致。
 
-## 支付兜底
-
-如果支付宝当面付 `precreate` 被拒绝，可以配置手动收款二维码作为兜底：
-
-```bash
-MANUAL_PAYMENT_QR_URL=https://你的支付宝收款码图片或链接
-MANUAL_PAYMENT_LABEL=支付宝扫码转账
-```
-
-配置后，订单会展示收款码并进入人工审核流程，不会直接报 502。
-
 ## 线上部署
 
 已提供 [render.yaml](./render.yaml) 作为 Render 部署骨架。
+同时补充了 [railway.json](./railway.json) 用于 Railway Docker 部署。
 
 注意：
 
 - 当前目录不是 Git 仓库，不能直接由我替你发到 Render
 - Render Blueprint 需要 Git 远端仓库
 - 支付宝私钥建议作为环境变量注入，或在部署平台使用 Secret 管理
+- Railway 也需要同样的环境变量；如果报重复变量，先删旧值再重新保存，不要同时保留 `ALIPAY_APP_ID` 和 `ALIPAY_APPID`

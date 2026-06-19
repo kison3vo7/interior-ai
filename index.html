@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>灵空间AI — AI装修效果图</title>
+<title>灵感空间AI — AI装修效果图</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
 <style>
 :root{--p:#6366f1;--p2:#4f46e5;--g:#10b981;--bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0}
@@ -29,7 +29,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .hero{text-align:center;padding:72px 20px 48px;background:linear-gradient(180deg,#f0f0ff,var(--bg))}
 .hero h1{font-size:clamp(28px,5vw,52px);font-weight:800;line-height:1.15;margin-bottom:14px}
 .hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--p),#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.hero p{color:var(--muted);font-size:17px;max-width:480px;margin:0 auto 28px}
+.hero p{color:var(--muted);font-size:17px;max-width:760px;margin:0 auto 28px}
 /* APP */
 .step-tabs{display:flex;gap:8px;margin-bottom:20px}
 .step-tab{flex:1;padding:10px 6px;border-radius:10px;text-align:center;font-size:13px;font-weight:600;border:2px solid var(--border);color:var(--muted);cursor:pointer;transition:.15s}
@@ -62,6 +62,42 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .plan-desc{font-size:13px;color:var(--muted);margin:6px 0 12px}
 .plan-feat{list-style:none;font-size:13px;color:#475569}
 .plan-feat li::before{content:'✓ ';color:var(--g);font-weight:700}
+.section{padding:64px 20px}
+.section-light{background:#fff}
+.section-title{text-align:center;margin-bottom:36px}
+.section-title h2{font-size:30px;font-weight:800;margin-bottom:8px}
+.section-title p{font-size:15px;color:var(--muted);max-width:760px;margin:0 auto}
+.feature-grid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.feature-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px}
+.feature-card h3{font-size:17px;margin:12px 0 8px}
+.feature-card p{font-size:14px;color:var(--muted)}
+.scene-grid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.scene-card{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.scene-card img{width:100%;height:180px;object-fit:cover;display:block}
+.scene-info{padding:16px}
+.scene-info h3{font-size:16px;margin-bottom:6px}
+.scene-info p{font-size:13px;color:var(--muted)}
+.process-grid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.process-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px}
+.process-card .num{display:inline-flex;width:34px;height:34px;border-radius:50%;align-items:center;justify-content:center;background:#ede9fe;color:var(--p);font-weight:800;margin-bottom:12px}
+.info-grid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+.info-panel{background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px}
+.info-panel h3{font-size:18px;margin-bottom:12px}
+.info-panel p,.info-panel li{font-size:14px;color:var(--muted)}
+.info-panel ul{padding-left:18px}
+.info-row{display:grid;grid-template-columns:120px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid #eef2f7}
+.info-row:last-child{border-bottom:none}
+.info-row strong{font-size:14px;color:var(--text)}
+.info-row span{font-size:14px;color:var(--muted)}
+.audit-strip{max-width:1120px;margin:0 auto;background:linear-gradient(135deg,#1e293b,#334155);border-radius:20px;padding:28px;color:#fff;display:grid;grid-template-columns:1.3fr .7fr;gap:18px;align-items:center}
+.audit-strip p{color:#cbd5e1;font-size:14px}
+.audit-list{display:grid;gap:10px}
+.audit-item{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;font-size:14px}
+.site-footer{background:#0f172a;color:#cbd5e1;padding:26px 20px 38px}
+.site-footer .inner{max-width:1120px;margin:0 auto}
+.site-footer .top{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+.site-footer .brand{font-size:20px;font-weight:800;color:#fff}
+.site-footer .copy{font-size:13px;color:#94a3b8}
 /* OVERLAY / MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
@@ -72,7 +108,9 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .field{margin-bottom:14px}
 .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
 .field input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:.15s}
+.field textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:.15s;min-height:88px;resize:vertical;font-family:inherit}
 .field input:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.field textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
 /* PROGRESS */
 .prog-wrap{margin:12px 0}
 .prog-label{font-size:13px;color:var(--muted);text-align:center;margin-bottom:6px}
@@ -82,26 +120,28 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .toast{position:fixed;bottom:24px;right:24px;z-index:200;background:#1e293b;color:#fff;padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;pointer-events:none;animation:fadeup .3s}
 .toast.error{background:#ef4444}
 @keyframes fadeup{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-/* QR */
-.qr-box{text-align:center;padding:20px 0}
-.qr-box img{width:180px;height:180px;border-radius:8px;border:1px solid var(--border)}
-.qr-hint{font-size:13px;color:var(--muted);margin-top:10px}
+/* PAY */
+.pay-box{text-align:center;padding:20px 0}
+.pay-qr-wrap{display:flex;justify-content:center;margin:14px 0}
+.pay-qr-img{width:220px;height:220px;border-radius:14px;background:#fff;border:1px solid var(--border);padding:10px;object-fit:contain}
+.pay-iframe{width:100%;height:520px;border:1px solid var(--border);border-radius:14px;background:#fff}
+.pay-hint{font-size:13px;color:var(--muted);margin-top:10px}
 .amount{font-size:32px;font-weight:800;color:var(--p);text-align:center;margin:8px 0}
-@media(max-width:600px){.styles-grid{grid-template-columns:repeat(2,1fr)}.result-grid{grid-template-columns:1fr}.nav-links{display:none}}
+.legal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.legal-card{border:1px solid var(--border);border-radius:12px;padding:18px;background:#fff}
+.legal-card h3{font-size:16px;margin-bottom:8px}
+.legal-card p,.legal-card li{font-size:13px;color:var(--muted)}
+.legal-card ul{padding-left:18px}
+@media(max-width:860px){.info-grid,.audit-strip{grid-template-columns:1fr}}
+@media(max-width:600px){.styles-grid{grid-template-columns:repeat(2,1fr)}.result-grid{grid-template-columns:1fr}.nav-links{display:none}.hero{padding:56px 20px 40px}.section{padding:48px 16px}.info-row{grid-template-columns:1fr}.site-footer .top{flex-direction:column}}
 </style>
 </head>
 <body>
 <div id="app">
 
-<!-- DEMO BANNER -->
-<div v-if="isDemoMode" style="background:#f59e0b;color:#fff;text-align:center;padding:7px;font-size:13px;font-weight:600">
-  ⚡ 演示模式（后端未启动）— 注册/生成/支付均为模拟数据
-  <a style="color:#fff;text-decoration:underline;margin-left:10px;cursor:pointer" @click="isDemoMode=false;DEMO_MODE=false">我已启动后端，关闭提示</a>
-</div>
-
 <!-- NAV -->
 <nav>
-  <div class="logo">🏠 灵空间AI</div>
+  <div class="logo">🏠 灵感空间AI</div>
   <div class="nav-links">
     <a @click="page='home'">首页</a>
     <a @click="goGenerate">在线生成</a>
@@ -123,32 +163,102 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 <!-- ===== HOME PAGE ===== -->
 <template v-if="page==='home'">
   <div class="hero">
-    <p style="display:inline-flex;align-items:center;gap:6px;background:#ede9fe;color:var(--p);font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px;margin-bottom:18px">🚀 AI装修效果图，10秒生成</p>
+    <p style="display:inline-flex;align-items:center;gap:6px;background:#ede9fe;color:var(--p);font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px;margin-bottom:18px">🚀 灵感空间AI · 12种风格 · 完整设计方案</p>
     <h1>一张照片<br><em>秒变精装效果图</em></h1>
-    <p>上传房间原图，选择装修风格，AI自动生成专业渲染效果</p>
+    <p>上传真实房间照片，系统会结合空间结构、采光和布局生成可参考的家装设计方案。支持 12 种热门装修风格切换，可直接购买点数或开通会员在线生成与下载效果图。</p>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-primary" style="padding:13px 28px;font-size:16px" @click="goGenerate">立即体验</button>
       <button class="btn btn-ghost" style="padding:13px 28px;font-size:16px" @click="page='pricing'">查看定价</button>
     </div>
     <div style="display:flex;justify-content:center;gap:40px;margin-top:48px;flex-wrap:wrap">
-      <div style="text-align:center" v-for="s in [{n:'4万亿',l:'国内装修市场/年'},{n:'10秒',l:'单张生成速度'},{n:'6种',l:'主流装修风格'},{n:'¥3起',l:'单张生成费用'}]">
+      <div style="text-align:center" v-for="s in [{n:'10秒',l:'单张生成速度'},{n:'12种',l:'热门装修风格'},{n:'完整方案',l:'按房间结构生成'},{n:'¥3起',l:'单张生成费用'}]">
         <div style="font-size:26px;font-weight:800;color:var(--p)">{{s.n}}</div>
         <div style="font-size:13px;color:var(--muted)">{{s.l}}</div>
       </div>
     </div>
   </div>
-  <!-- How it works -->
-  <div style="background:#1e293b;padding:60px 20px;text-align:center">
-    <h2 style="color:#fff;font-size:28px;font-weight:800;margin-bottom:8px">三步生成效果图</h2>
-    <p style="color:#94a3b8;margin-bottom:40px">无需设计师，无需3D建模</p>
-    <div style="max-width:700px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
-      <div v-for="s in [{i:'📸',t:'上传房间照片',d:'手机拍一张，上传即可'},{i:'🎨',t:'选择装修风格',d:'6种主流风格，精准匹配'},{i:'⚡',t:'10秒生成',d:'AI识别空间，高清输出'}]" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px 16px">
-        <div style="font-size:32px;margin-bottom:12px">{{s.i}}</div>
-        <div style="color:#fff;font-weight:700;margin-bottom:6px">{{s.t}}</div>
-        <div style="color:#94a3b8;font-size:13px">{{s.d}}</div>
+  <section class="section section-light">
+    <div class="section-title">
+      <h2>灵感空间AI卖什么</h2>
+      <p>这是一个面向普通家庭装修、软装参考和设计沟通的在线 AI 家装效果图服务，用户购买生成次数后即可上传房间照片，选择喜欢的风格并获得成品效果图。</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card" v-for="f in [
+        {icon:'🖼️',title:'上传真实房间照片',desc:'支持客厅、卧室、餐厅、书房、儿童房等室内空间照片上传。'},
+        {icon:'🧠',title:'识别空间结构',desc:'根据房间格局、窗户、墙面、家具位置生成对应的装修参考方案。'},
+        {icon:'🎨',title:'12种热门装修风格',desc:'现代简约、北欧、新中式、轻奢、奶油、侘寂、原木、法式等可随时切换。'},
+        {icon:'💳',title:'点数包与会员购买',desc:'支持按次充值和会员开通，购买后立即获得可用生成次数。'}
+      ]">
+        <div style="font-size:30px">{{ f.icon }}</div>
+        <h3>{{ f.title }}</h3>
+        <p>{{ f.desc }}</p>
       </div>
     </div>
-  </div>
+  </section>
+
+  <section class="section" style="background:#1e293b;text-align:center">
+    <div class="section-title" style="margin-bottom:40px">
+      <h2 style="color:#fff">三步生成效果图</h2>
+      <p style="color:#94a3b8">无需建模，无需复杂软件，打开网页即可下单使用</p>
+    </div>
+    <div class="process-grid">
+      <div class="process-card" v-for="s in [
+        {n:'1',t:'上传房间照片',d:'用户上传真实房间照片，系统读取画面中的结构、开窗、采光与家具布局。'},
+        {n:'2',t:'选择装修风格',d:'从 12 种热门家装风格中选择喜欢的设计方向，支持反复切换比较。'},
+        {n:'3',t:'在线支付购买',d:'可先注册领取体验次数，也可直接充值点数包或开通会员继续生成。'},
+        {n:'4',t:'下载设计结果',d:'生成完成后可查看、下载高清效果图，用于装修参考与沟通展示。'}
+      ]">
+        <div class="num">{{ s.n }}</div>
+        <h3 style="font-size:17px;margin-bottom:8px">{{ s.t }}</h3>
+        <p style="font-size:14px;color:var(--muted)">{{ s.d }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-light">
+    <div class="section-title">
+      <h2>适用场景与案例展示</h2>
+      <p>适用于装修前风格探索、家庭改造参考、与设计师沟通需求、软装换新前方案预览等场景。</p>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card" v-for="c in caseStudies" :key="c.title">
+        <img :src="c.image" :alt="c.title">
+        <div class="scene-info">
+          <h3>{{ c.title }}</h3>
+          <p>{{ c.desc }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background:#f8fafc">
+    <div class="section-title">
+      <h2>价格与购买方式</h2>
+      <p>用户可注册领取一次免费体验，后续按需购买点数包或开通会员。购买完成后系统自动到账生成次数，可直接在网页端继续使用。</p>
+    </div>
+    <div class="pricing-grid" style="max-width:1120px;margin:0 auto">
+      <div class="plan" v-for="p in pricingPlans" :key="p.id" :class="{featured:p.featured}">
+        <div style="font-weight:700;font-size:15px;margin-bottom:6px">{{ p.name }}</div>
+        <div class="plan-price">{{ p.price }}<small>/{{ p.unit }}</small></div>
+        <div class="plan-desc">{{ p.desc }}</div>
+        <ul class="plan-feat">
+          <li v-for="f in p.features" :key="f">{{ f }}</li>
+        </ul>
+        <button class="btn btn-primary" style="width:100%;margin-top:14px" @click="buyPlan(p)">{{ p.cta }}</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <div class="top">
+        <div>
+          <div class="brand">灵感空间AI</div>
+          <div class="copy">上传房间照片，在线生成家装效果图与风格方案。</div>
+        </div>
+      </div>
+    </div>
+  </footer>
 </template>
 
 <!-- ===== GENERATE PAGE ===== -->
@@ -165,7 +275,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       <div v-if="!upload" class="upload-area" @click="$refs.fi.click()" @dragover.prevent @drop.prevent="handleFileDrop">
         <div style="font-size:40px;margin-bottom:12px">📸</div>
         <div style="font-weight:700;margin-bottom:6px">点击或拖拽上传房间照片</div>
-        <div style="font-size:13px;color:var(--muted)">支持 JPG / PNG · 建议 1024×768 以上</div>
+        <div style="font-size:13px;color:var(--muted)">支持 JPG / PNG / HEIC / HEIF · 建议 1024×768 以上</div>
         <div style="margin-top:12px">
           <button class="btn btn-ghost" style="font-size:13px" @click.stop="useSample">使用示例图片</button>
         </div>
@@ -230,7 +340,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:14px">
-          <a class="btn btn-green" style="flex:1;text-align:center;padding:11px" :href="job.output_url" download="灵空间AI效果图.jpg">⬇ 下载高清图</a>
+          <a class="btn btn-green" style="flex:1;text-align:center;padding:11px" :href="job.output_url" download="灵感空间AI效果图.jpg">⬇ 下载高清图</a>
           <button class="btn btn-ghost" style="flex:1" @click="job=null;step=1">重新生成</button>
         </div>
         <button class="btn btn-ghost" style="width:100%;margin-top:8px" @click="goHistory">查看历史记录 →</button>
@@ -321,7 +431,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   <div class="modal">
     <h2>充值点数</h2>
     <div style="display:grid;gap:10px">
-      <div v-for="p in chargePlans" :key="p.id" class="plan" style="cursor:pointer" @click="createOrder(p.id)">
+      <div v-for="p in chargePlans" :key="p.id" class="plan" :style="loading ? 'cursor:not-allowed;opacity:.7' : 'cursor:pointer'" @click="!loading && createOrder(p.id)">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div>
             <div style="font-weight:700">{{ p.name }}</div>
@@ -337,19 +447,30 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
 </div>
 
-<!-- ===== ORDER QR MODAL ===== -->
-<div class="overlay" v-if="modal==='order'" @click.self="modal=null">
+<!-- ===== ORDER PAY MODAL ===== -->
+<div class="overlay" v-if="modal==='order'" @click.self="closeOrderModal">
   <div class="modal" style="text-align:center">
-    <h2>扫码支付</h2>
+    <h2>支付宝支付</h2>
     <div class="amount">¥{{ order?.amount }}</div>
     <div style="font-size:14px;color:var(--muted);margin-bottom:16px">{{ order?.name }}</div>
-    <div class="qr-box">
-      <!-- 真实微信支付时替换为 code_url 生成的二维码 -->
-      <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(order?.pay_url||'')}`" alt="支付二维码">
-      <div class="qr-hint">{{ order?.provider==='alipay' ? '请使用支付宝扫码完成支付' : '请使用微信扫码完成支付' }}</div>
-      <div class="qr-hint" style="margin-top:4px;color:var(--p)">正在等待支付...</div>
+    <div class="pay-box">
+      <template v-if="order?.qrImageUrl">
+        <div class="pay-hint" style="margin-top:0;color:var(--p)">请使用支付宝扫一扫下方二维码</div>
+        <div class="pay-qr-wrap">
+          <img class="pay-qr-img" :src="order.qrImageUrl" alt="支付宝支付二维码">
+        </div>
+        <div class="pay-hint">二维码有效期约 15 分钟，支付完成后当前页面会自动刷新点数。</div>
+        <div v-if="isMobileClient() && order?.pay_url" class="pay-hint" style="color:var(--p)">手机端可点击下方按钮直接拉起支付宝。</div>
+      </template>
+      <template v-else>
+        <div style="font-size:42px;margin-bottom:8px">🅰️</div>
+        <div class="pay-hint">正在生成支付宝二维码…</div>
+      </template>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn btn-primary" style="flex:1" @click="openPayUrl()">{{ isMobileClient() && order?.pay_url ? '打开支付宝' : '我已支付，刷新状态' }}</button>
+        <button class="btn btn-ghost" style="flex:1" @click="closeOrderModal">取消</button>
+      </div>
     </div>
-    <button class="btn btn-ghost" style="width:100%;margin-top:12px" @click="modal=null">取消</button>
     <p style="font-size:12px;color:var(--muted);margin-top:8px">订单号：{{ order?.order_id }}</p>
   </div>
 </div>
@@ -366,10 +487,13 @@ const API_BASE = window.__API__ || (
     ? 'http://127.0.0.1:8000'
     : (location.hostname === 'localhost' ? 'http://localhost:8000' : '')
 );
-let DEMO_MODE = false; // auto-set after first failed ping
+const IS_LOCAL_DEMO_ALLOWED = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+let DEMO_MODE = false; // only auto-set for local/offline preview
+const ORDER_STORAGE_KEY = 'lkj_pending_order';
+const ACCOUNT_STORAGE_KEY = 'lkj_account';
 
 // Demo state (in-memory)
-const _db = { users:{}, pollCount:{} };
+const _db = { users:{}, pollCount:{}, orders:{} };
 const DEMO_IMGS = {
   modern:     'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&auto=format',
   nordic:     'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&auto=format',
@@ -378,15 +502,49 @@ const DEMO_IMGS = {
   industrial: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format',
   american:   'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&auto=format',
 };
+const DEMO_PAYMENT_QR = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" rx="24" fill="#ffffff"/>
+  <rect x="18" y="18" width="284" height="284" rx="20" fill="#f8fafc" stroke="#e2e8f0"/>
+  <rect x="42" y="42" width="72" height="72" fill="#1e293b"/>
+  <rect x="58" y="58" width="40" height="40" fill="#ffffff"/>
+  <rect x="206" y="42" width="72" height="72" fill="#1e293b"/>
+  <rect x="222" y="58" width="40" height="40" fill="#ffffff"/>
+  <rect x="42" y="206" width="72" height="72" fill="#1e293b"/>
+  <rect x="58" y="222" width="40" height="40" fill="#ffffff"/>
+  <g fill="#334155">
+    <rect x="140" y="48" width="18" height="18"/>
+    <rect x="170" y="48" width="18" height="18"/>
+    <rect x="140" y="78" width="48" height="18"/>
+    <rect x="140" y="108" width="18" height="18"/>
+    <rect x="170" y="108" width="18" height="18"/>
+    <rect x="200" y="108" width="18" height="18"/>
+    <rect x="140" y="152" width="18" height="18"/>
+    <rect x="170" y="152" width="48" height="18"/>
+    <rect x="140" y="182" width="78" height="18"/>
+    <rect x="140" y="212" width="18" height="18"/>
+    <rect x="170" y="212" width="18" height="18"/>
+    <rect x="200" y="212" width="18" height="18"/>
+    <rect x="140" y="242" width="78" height="18"/>
+    <rect x="230" y="152" width="18" height="18"/>
+    <rect x="230" y="182" width="48" height="18"/>
+    <rect x="230" y="212" width="18" height="18"/>
+    <rect x="260" y="212" width="18" height="18"/>
+    <rect x="230" y="242" width="48" height="18"/>
+  </g>
+  <text x="160" y="300" text-anchor="middle" font-size="20" fill="#2563eb" font-family="Arial, sans-serif">DEMO ALIPAY QR</text>
+</svg>
+`)}`;
+const DEMO_ALIPAY_URL = 'https://mobilecodec.alipay.com/show.htm?code=demo-face-to-face';
 
-async function mockReq(path, opts={}) {
+async function demoReq(path, opts={}) {
   await new Promise(r=>setTimeout(r,600));
   const body = opts.body && !(opts.body instanceof FormData) ? JSON.parse(opts.body) : {};
 
   if (path.includes('/auth/register')) {
     if (_db.users[body.phone]) throw new Error('手机号已注册');
-    _db.users[body.phone] = {password:body.password, credits:0};
-    return {token:'demo_'+body.phone, credits:0, plan:'free'};
+    _db.users[body.phone] = {password:body.password, credits:1};
+    return {token:'demo_'+body.phone, credits:1, plan:'free'};
   }
   if (path.includes('/auth/login')) {
     const u = _db.users[body.phone];
@@ -408,24 +566,63 @@ async function mockReq(path, opts={}) {
   }
   if (path.includes('/generate/history')) return [];
   if (path.includes('/payment/create')) {
-    const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度套餐',credits:200}}[body.plan_id]||{price:30,name:'演示套餐',credits:10};
-    return {order_id:'DEMO'+Date.now(), amount:plan.price, name:plan.name, pay_url:'https://demo.lingkj.com/pay', _credits:plan.credits};
+    const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度会员',credits:200},c500:{price:999,name:'企业会员',credits:500}}[body.plan_id]||{price:30,name:'10次点数包',credits:10};
+    const token = (opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
+    const phone = token.startsWith('Bearer demo_') ? token.replace('Bearer demo_','') : '';
+    const orderId = 'DEMO'+Date.now();
+    _db.orders[orderId] = { phone, credits: plan.credits, status: 'pending', amount: plan.price, name: plan.name };
+    return {
+      order_id: orderId,
+      amount: plan.price,
+      name: plan.name,
+      status: 'pending',
+      pay_url: DEMO_ALIPAY_URL,
+      pay_method: 'face_to_face',
+      provider: 'alipay',
+      qr_code: DEMO_ALIPAY_URL,
+      qr_image_url: DEMO_PAYMENT_QR,
+      _credits: plan.credits
+    };
   }
-  if (path.includes('/payment/status/')) return {status:'paid', credits:10};
+  if (path.includes('/payment/status/')) {
+    const orderId = path.split('/').pop();
+    const order = _db.orders[orderId];
+    if (!order) throw new Error('订单不存在');
+    if (order.status !== 'paid') {
+      order.status = 'paid';
+      if (order.phone && _db.users[order.phone]) {
+        _db.users[order.phone].credits += order.credits;
+      }
+    }
+    return {status:'paid', credits:_db.users[order.phone]?.credits || order.credits};
+  }
+  if (path.includes('/payment/order/')) {
+    const orderId = path.split('/').pop();
+    const order = _db.orders[orderId];
+    if (!order) throw new Error('订单不存在');
+    return {
+      order_id: orderId,
+      amount: order.amount,
+      name: order.name,
+      status: order.status,
+      pay_url: DEMO_ALIPAY_URL,
+      pay_method: 'face_to_face',
+      provider: 'alipay',
+      qr_code: DEMO_ALIPAY_URL,
+      qr_image_url: DEMO_PAYMENT_QR
+    };
+  }
   return {};
 }
 
 async function req(path, opts={}) {
-  if (DEMO_MODE) return mockReq(path, opts);
+  if (DEMO_MODE) return demoReq(path, opts);
   const token = localStorage.getItem('lkj_token');
   const h = {};
   if (token) h['Authorization'] = `Bearer ${token}`;
   if (opts.body && !(opts.body instanceof FormData)) h['Content-Type'] = 'application/json';
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 25000);
   try {
-    const r = await fetch(API_BASE + path, {...opts, signal: ctrl.signal, headers:{...h,...(opts.headers||{})}});
-    clearTimeout(t);
+    const r = await fetch(API_BASE + path, {...opts, credentials:'include', headers:{...h,...(opts.headers||{})}});
     if (!r.ok) {
       const e = await r.json().catch(()=>({detail:r.statusText}));
       if (r.status === 401) {
@@ -436,9 +633,12 @@ async function req(path, opts={}) {
           window._vueApp.upload = null;
           window._vueApp.job = null;
           window._vueApp.loading = false;
-          window._vueApp.authError = '登录状态已失效，请重新登录';
-          window._vueApp.authTab = 'login';
-          window._vueApp.modal = 'auth';
+          await window._vueApp.tryAutoLogin();
+          if (!window._vueApp.user) {
+            window._vueApp.authError = '登录状态已失效，请重新登录';
+            window._vueApp.authTab = 'login';
+            window._vueApp.modal = 'auth';
+          }
         }
         throw new Error('登录状态已失效，请重新登录');
       }
@@ -446,12 +646,10 @@ async function req(path, opts={}) {
     }
     return r.json();
   } catch(e) {
-    clearTimeout(t);
-    if (e.name==='AbortError') throw new Error('服务器响应超时，Render冷启动需约50秒，请关闭弹窗重新点击充值');
-    if (e.message==='Failed to fetch'||e.message.includes('Load failed')||e.message.includes('NetworkError')) {
+    if (IS_LOCAL_DEMO_ALLOWED && (e.message==='Failed to fetch'||e.message.includes('Load failed')||e.message.includes('NetworkError'))) {
       DEMO_MODE = true;
       if (window._vueApp) window._vueApp.isDemoMode = true;
-      return mockReq(path, opts);
+      return demoReq(path, opts);
     }
     throw e;
   }
@@ -474,6 +672,7 @@ const app = createApp({
       job: null,          // {job_id, status, output_url, error}
       history: [],
       order: null,
+      orderPollingToken: 0,
       loading: false,
       isDemoMode: false,
       toastMsg: '',
@@ -497,23 +696,147 @@ const app = createApp({
       chargePlans: [
         {id:'c10',  name:'10次点数包',  desc:'适合偶尔使用',    price:30,  credits:10},
         {id:'c50',  name:'月度会员',    desc:'每月50次，最划算',price:99,  credits:50},
-        {id:'c200', name:'季度套餐',    desc:'每季200次，送礼佳选',price:269,credits:200},
+        {id:'c200', name:'季度会员',    desc:'每季200次，适合持续装修参考',price:269,credits:200},
+        {id:'c500', name:'企业会员',    desc:'每月500次，适合高频使用',price:999,credits:500},
       ],
       pricingPlans: [
         {id:'c10',  name:'按量充值',   price:'¥30', unit:'10次', desc:'随买随用，无月费',  features:['10次生成额度','高清输出','下载无水印'], cta:'立即充值', featured:false},
         {id:'c50',  name:'月度会员',   price:'¥99', unit:'月',   desc:'每月50次，折合¥2/次',features:['50次/月','2K高清优先','历史记录6个月'], cta:'开通会员', featured:true},
-        {id:'api',  name:'企业API',    price:'¥999',unit:'月',   desc:'500次/月，API接入', features:['500次/月','REST API','自定义品牌','商务支持'], cta:'联系商务', featured:false},
+        {id:'c200', name:'季度会员',   price:'¥269',unit:'季',   desc:'每季200次，适合持续比稿与多空间设计', features:['200次/季','2K高清优先','历史记录9个月','多空间连续生成'], cta:'开通会员', featured:false},
+        {id:'c500', name:'企业会员',   price:'¥999',unit:'月',   desc:'每月500次，适合高频团队使用', features:['500次/月','高清优先生成','历史记录12个月','优先支持服务'], cta:'开通会员', featured:false},
+      ],
+      caseStudies: [
+        {title:'客厅焕新方案', desc:'保留原始采光与窗位，快速对比现代简约、奶油风与轻奢风的落地视觉差异。', image:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=900&auto=format&fit=crop'},
+        {title:'卧室布局参考', desc:'基于床位、过道和柜体位置输出更贴近原房间结构的卧室改造效果图。', image:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=900&auto=format&fit=crop&sat=-20'},
+        {title:'餐厅与开放区', desc:'适合装修前确认餐边柜、灯光氛围和整体色系，帮助家庭成员统一风格方向。', image:'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=900&auto=format&fit=crop'},
+        {title:'书房与次卧改造', desc:'用于小空间重构与功能优化，适合书房、儿童房、次卧等多种家装场景。', image:'https://images.unsplash.com/photo-1494526585095-c41746248156?w=900&auto=format&fit=crop'},
       ],
     }
   },
-  mounted() {
-    if (this.user && !localStorage.getItem('lkj_token')) {
-      this.user = null;
-      localStorage.removeItem('lkj_user');
-    }
+  async mounted() {
+    this.restoreSavedAccount();
+    await this.bootstrapSession();
+    this.restorePendingOrder();
+    this.handlePaymentReturn();
     this.ensureSampleUpload();
   },
   methods: {
+    async bootstrapSession() {
+      await this.syncCurrentUser();
+    },
+    async syncCurrentUser() {
+      const token = localStorage.getItem('lkj_token');
+      if (!token) {
+        await this.tryAutoLogin();
+        return;
+      }
+      await this.refreshCurrentUser();
+    },
+    persistPendingOrder() {
+      if (!this.order?.order_id) return;
+      localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify({
+        order_id: this.order.order_id,
+        amount: this.order.amount || '',
+        name: this.order.name || '支付宝支付',
+        pay_url: this.order.pay_url || '',
+        qrImageUrl: this.order.qrImageUrl || '',
+        status: this.order.status || 'pending',
+      }));
+    },
+    normalizeOrderPayload(d, fallback = {}) {
+      return {
+        ...fallback,
+        ...d,
+        qrImageUrl: d?.qr_image_url || this.normalizeQrImageUrl(d?.qr_code) || fallback.qrImageUrl || '',
+        status: d?.status || fallback.status || 'pending',
+      };
+    },
+    clearPendingOrder() {
+      localStorage.removeItem(ORDER_STORAGE_KEY);
+    },
+    cancelPaymentPolling() {
+      this.orderPollingToken += 1;
+    },
+    saveAccount(phone, password) {
+      localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify({ phone, password }));
+    },
+    restoreSavedAccount() {
+      try {
+        const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        if (saved?.phone && !this.form.phone) this.form.phone = saved.phone;
+      } catch {}
+    },
+    async tryAutoLogin() {
+      try {
+        const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
+        if (!raw) {
+          this.user = null;
+          localStorage.removeItem('lkj_user');
+          return;
+        }
+        const saved = JSON.parse(raw);
+        if (!saved?.phone || !saved?.password) {
+          this.user = null;
+          localStorage.removeItem('lkj_user');
+          return;
+        }
+        let d;
+        try {
+          d = await req('/api/auth/login', {
+            method:'POST',
+            body:JSON.stringify({ phone:saved.phone, password:saved.password }),
+            headers:{}
+          });
+        } catch {
+          this.user = null;
+          localStorage.removeItem('lkj_token');
+          localStorage.removeItem('lkj_user');
+          return;
+        }
+        localStorage.setItem('lkj_token', d.token);
+        this.user = { phone:saved.phone, credits:d.credits, plan:d.plan || 'free' };
+        localStorage.setItem('lkj_user', JSON.stringify(this.user));
+        await this.refreshCurrentUser();
+      } catch {
+        this.user = null;
+        localStorage.removeItem('lkj_token');
+        localStorage.removeItem('lkj_user');
+      }
+    },
+    closeOrderModal() {
+      this.cancelPaymentPolling();
+      this.modal = null;
+      this.order = null;
+      this.clearPendingOrder();
+    },
+    async refreshCurrentUser() {
+      try {
+        const me = await req('/api/auth/me');
+        this.user = { phone: me.phone, credits: me.credits, plan: me.plan || 'free' };
+        localStorage.setItem('lkj_user', JSON.stringify(this.user));
+      } catch (e) {
+        const token = localStorage.getItem('lkj_token');
+        if (!token) {
+          await this.tryAutoLogin();
+          return;
+        }
+        console.warn('refreshCurrentUser failed', e);
+      }
+    },
+    restorePendingOrder() {
+      if (!this.user) return;
+      try {
+        const raw = localStorage.getItem(ORDER_STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        if (!saved?.order_id) return;
+        this.restoreOrder(saved.order_id, saved);
+      } catch {
+        this.clearPendingOrder();
+      }
+    },
     openAuth(tab) { this.authTab=tab; this.authError=''; this.modal='auth'; },
     async submitAuth() {
       if (!this.form.phone || !this.form.password) { this.authError='请填写手机号和密码'; return; }
@@ -527,26 +850,45 @@ const app = createApp({
         localStorage.setItem('lkj_token', d.token);
         this.user = {phone:this.form.phone, credits:d.credits, plan:d.plan||'free'};
         localStorage.setItem('lkj_user', JSON.stringify(this.user));
+        this.saveAccount(this.form.phone, this.form.password);
+        await this.refreshCurrentUser();
         this.modal=null;
         this.toast(this.authTab==='register'?'注册成功':'登录成功');
         this.page='generate';
-      } catch(e) { this.authError = (e.message==='Failed to fetch'||e.message.includes('Load failed')) ? '无法连接服务器，请确认后端已启动' : e.message; }
+      } catch(e) {
+        this.authError = (e.message==='Failed to fetch'||e.message.includes('Load failed')) ? '无法连接服务器，请确认后端已启动' : e.message;
+      }
       finally { this.loading=false; }
     },
     logout() {
-      localStorage.removeItem('lkj_token'); localStorage.removeItem('lkj_user');
+      req('/api/auth/logout', { method:'POST' }).catch(()=>{});
+      localStorage.removeItem('lkj_token'); localStorage.removeItem('lkj_user'); localStorage.removeItem(ACCOUNT_STORAGE_KEY);
       this.user=null; this.page='home'; this.toast('已退出登录');
     },
-    goGenerate() {
+    async goGenerate() {
       if (!this.user || !localStorage.getItem('lkj_token')) {
         this.openAuth('login');
         return;
       }
+      await this.syncCurrentUser();
       this.page='generate';
       this.step=1;
     },
+    scrollToSection(id) {
+      if (this.page !== 'home') {
+        this.page = 'home';
+        this.$nextTick(() => {
+          const el = document.getElementById(id);
+          if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+        return;
+      }
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+    },
     async goHistory() {
       if (!this.user) { this.openAuth('login'); return; }
+      await this.syncCurrentUser();
       this.page='history';
       try { this.history = await req('/api/generate/history'); } catch {}
     },
@@ -557,7 +899,14 @@ const app = createApp({
     },
     async handleFileDrop(e) { await this.handleFile(e.dataTransfer.files[0]); },
     async handleFile(file) {
-      if (!file||!file.type.startsWith('image/')) return;
+      if (!file) return;
+      const name = (file.name || '').toLowerCase();
+      const isImageByType = (file.type || '').startsWith('image/');
+      const isImageByExt = /\.(jpg|jpeg|png|webp|heic|heif)$/i.test(name);
+      if (!isImageByType && !isImageByExt) {
+        this.toast('请上传 JPG、PNG、HEIC 或 HEIF 图片', 'error');
+        return;
+      }
       if (!this.user || !localStorage.getItem('lkj_token')) {
         this.openAuth('login');
         return;
@@ -598,6 +947,7 @@ const app = createApp({
       if (!this.user) { this.openAuth('register'); return; }
       if (!this.upload?.fileId) { this.toast('请先上传房间原图','error'); return; }
       if (!this.selectedStyle) { this.toast('请先选择装修风格','error'); return; }
+      await this.syncCurrentUser();
       if ((this.user.credits||0) < 1) { this.modal='payment'; return; }
       this.loading=true; this.job={status:'processing'};
       this.startProgAnim();
@@ -617,13 +967,18 @@ const app = createApp({
     async pollJob(jobId) {
       const labels=['正在分析空间结构...','提取房型特征...','应用风格迁移...','高清渲染中...','输出效果图...'];
       let i=0;
-      while(true) {
+      let attempts = 0;
+      while(attempts < 60) {
         await new Promise(r=>setTimeout(r,2000));
         try {
           const d = await req(`/api/generate/status/${jobId}`);
-          this.job=d; this.progLabel=labels[Math.min(i++,labels.length-1)]; this.progPct=Math.min(95,i*20);
+          attempts += 1;
+          this.job=d; this.progLabel=labels[Math.min(i++,labels.length-1)]; this.progPct=Math.min(95, Math.max(i*20, Math.floor((attempts / 60) * 95)));
           if(d.status==='done'||d.status==='failed') { this.progPct=100; break; }
         } catch(e) { this.job={status:'failed',error:e.message}; break; }
+      }
+      if (attempts >= 60 && this.job?.status !== 'done' && this.job?.status !== 'failed') {
+        this.job = {status:'failed', error:'生成超时，请重试一次。如仍失败，请更换图片或稍后再试。'};
       }
     },
     _progTimer: null,
@@ -633,30 +988,114 @@ const app = createApp({
     },
     stopProgAnim() { clearInterval(this._progTimer); },
     async createOrder(planId) {
+      if (this.loading) return;
       if (!this.user) { this.modal=null; this.openAuth('register'); return; }
+      await this.syncCurrentUser();
       this.loading=true;
       try {
         const d = await req('/api/payment/create', {method:'POST', body:JSON.stringify({plan_id:planId})});
-        this.order=d; this.modal='order';
-        this.pollPayment(d.order_id);
+        this.order = this.normalizeOrderPayload(d, { status:'pending' });
+        this.modal='order';
+        this.persistPendingOrder();
+        this.pollPayment(this.order.order_id);
       } catch(e) { this.toast(e.message,'error'); }
       finally { this.loading=false; }
     },
+    normalizeQrImageUrl(text) {
+      if (!text) return '';
+      if (/^data:image\//i.test(text)) return text;
+      if (/^https:\/\/mobilecodec\.alipay\.com\/show\.htm\?code=/i.test(text)) return text;
+      if (/^https:\/\/qr\.alipay\.com\//i.test(text)) {
+        const code = text.replace(/^https:\/\/qr\.alipay\.com\//i, '').replace(/\/+$/,'');
+        return `https://mobilecodec.alipay.com/show.htm?code=${encodeURIComponent(code)}`;
+      }
+      return /^https?:\/\//i.test(text) ? text : '';
+    },
+    isMobileClient() {
+      return /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent || '');
+    },
+    async openPayUrl() {
+      if (!this.order?.order_id) return;
+      if (this.isMobileClient()) {
+        if (this.order?.pay_url) {
+          window.location.href = this.order.pay_url;
+        }
+        return;
+      }
+      await this.refreshOrderStatus(this.order.order_id);
+    },
+    async fetchOrderDetails(orderId) {
+      const d = await req(`/api/payment/order/${orderId}`);
+      return this.normalizeOrderPayload(d, { order_id: orderId });
+    },
+    async restoreOrder(orderId, fallback = {}) {
+      if (!this.user) return;
+      this.modal = 'order';
+      this.order = this.normalizeOrderPayload({ order_id: orderId }, {
+        amount: '',
+        name: '支付宝支付',
+        pay_url: '',
+        qrImageUrl: '',
+        status: 'pending',
+        ...fallback,
+      });
+      this.persistPendingOrder();
+      try {
+        const fullOrder = await this.fetchOrderDetails(orderId);
+        if (!this.order || this.order.order_id !== orderId) return;
+        this.order = fullOrder;
+        this.persistPendingOrder();
+      } catch (e) {
+        if (e?.message) console.warn('restoreOrder failed', e.message);
+      }
+      this.pollPayment(orderId);
+    },
+    async refreshOrderStatus(orderId) {
+      const d = await req(`/api/payment/status/${orderId}`);
+      if (this.order && this.order.order_id === orderId && d.status) {
+        this.order.status = d.status;
+        this.persistPendingOrder();
+      }
+      if (d.status === 'paid') {
+        this.user.credits = d.credits;
+        localStorage.setItem('lkj_user', JSON.stringify(this.user));
+        this.cancelPaymentPolling();
+        this.modal = null;
+        this.order = null;
+        this.clearPendingOrder();
+        this.toast(`充值成功！当前余额 ${d.credits} 次`);
+        return true;
+      }
+      return false;
+    },
     async pollPayment(orderId) {
+      const token = ++this.orderPollingToken;
       for(let i=0;i<60;i++) {
         await new Promise(r=>setTimeout(r,3000));
+        if (token !== this.orderPollingToken) return;
         try {
-          const d = await req(`/api/payment/status/${orderId}`);
-          if(d.status==='paid') {
-            this.user.credits = d.credits;
-            localStorage.setItem('lkj_user', JSON.stringify(this.user));
-            this.modal=null; this.order=null;
-            this.toast(`充值成功！当前余额 ${d.credits} 次`); return;
+          if (token !== this.orderPollingToken) return;
+          const paid = await this.refreshOrderStatus(orderId);
+          if (paid) {
+            return;
           }
         } catch {}
       }
     },
-    buyPlan(p) { if(p.id==='api') { this.toast('请联系商务：business@lingkj.com'); return; } this.modal=null; this.createOrder(p.id); },
+    handlePaymentReturn() {
+      const params = new URLSearchParams(location.search);
+      const orderId = params.get('order_id') || params.get('orderId');
+      if (!orderId) return;
+      if (this.user) {
+        this.restoreOrder(orderId, this.order || {});
+      }
+      params.delete('payment');
+      params.delete('order_id');
+      params.delete('orderId');
+      const next = params.toString();
+      history.replaceState({}, '', `${location.pathname}${next ? `?${next}` : ''}${location.hash || ''}`);
+    },
+    async buyPlan(p) { this.modal=null; await this.createOrder(p.id); },
     async ensureSampleUpload() {
       if (this.sampleUpload) return this.sampleUpload;
       try {
