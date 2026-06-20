@@ -117,15 +117,15 @@ CREEM_PRODUCT_C10=prod_xxx_for_10_credits
 CREEM_PRODUCT_C50=prod_xxx_for_50_credits
 CREEM_PRODUCT_C200=prod_xxx_for_200_credits
 CREEM_PRODUCT_C500=prod_xxx_for_500_credits
-PUBLIC_SITE_URL=https://interior-ai-aemn.onrender.com
-NEXT_PUBLIC_BASE_URL=https://interior-ai-aemn.onrender.com
-DOMAIN=interior-ai-aemn.onrender.com
+PUBLIC_SITE_URL=https://lingganspace.work
+NEXT_PUBLIC_BASE_URL=https://lingganspace.work
+DOMAIN=lingganspace.work
 ```
 
 同时在 Creem 后台把 webhook 地址设置为：
 
 ```bash
-https://interior-ai-aemn.onrender.com/api/payment/callback/creem
+https://lingganspace.work/api/payment/callback/creem
 ```
 
 如果后面切正式自定义域名，需要同步替换：

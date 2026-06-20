@@ -308,7 +308,7 @@ async def _creem_create_checkout(order_id: str, user: tuple, plan_id: str, plan:
         raise HTTPException(503, f"Creem 商品未配置：{plan_id}")
 
     user_id, phone = user[0], user[1]
-    customer_email = f"{phone}@lingkj.local"
+    customer_email = f"{phone}@lingganspace.work"
     payload = {
         "product_id": product_id,
         "request_id": order_id,
@@ -378,7 +378,7 @@ async def _build_order_payment_payload(order_id: str, plan: dict) -> dict:
         else str(product_obj or "")
     ) or _creem_plan_product_id(plan_id)
     customer = checkout.get("customer") or {}
-    customer_email = customer.get("email") or f"{user_row[1]}@lingkj.local"
+    customer_email = customer.get("email") or f"{user_row[1]}@lingganspace.work"
     db_execute(
         db,
         """UPDATE orders
