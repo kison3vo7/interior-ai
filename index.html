@@ -450,24 +450,24 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 <!-- ===== ORDER PAY MODAL ===== -->
 <div class="overlay" v-if="modal==='order'" @click.self="closeOrderModal">
   <div class="modal" style="text-align:center">
-    <h2>支付宝支付</h2>
+    <h2>安全支付</h2>
     <div class="amount">¥{{ order?.amount }}</div>
     <div style="font-size:14px;color:var(--muted);margin-bottom:16px">{{ order?.name }}</div>
     <div class="pay-box">
-      <template v-if="order?.qrImageUrl">
-        <div class="pay-hint" style="margin-top:0;color:var(--p)">请使用支付宝扫一扫下方二维码</div>
-        <div class="pay-qr-wrap">
-          <img class="pay-qr-img" :src="order.qrImageUrl" alt="支付宝支付二维码">
+      <template v-if="order?.checkout_url">
+        <div class="pay-hint" style="margin-top:0;color:var(--p)">点击下方按钮跳转到 Creem 结账页完成支付</div>
+        <div style="padding:18px 16px;border:1px dashed var(--border);border-radius:16px;background:#f8fafc">
+          <div style="font-size:40px;margin-bottom:10px">💳</div>
+          <div class="pay-hint" style="margin:0">支付完成后会自动返回当前站点，点数到账后可继续生成。</div>
         </div>
-        <div class="pay-hint">二维码有效期约 15 分钟，支付完成后当前页面会自动刷新点数。</div>
-        <div v-if="isMobileClient() && order?.pay_url" class="pay-hint" style="color:var(--p)">手机端可点击下方按钮直接拉起支付宝。</div>
+        <div class="pay-hint">支持在结账页选择可用支付方式；支付完成后当前页面会自动刷新点数。</div>
       </template>
       <template v-else>
-        <div style="font-size:42px;margin-bottom:8px">🅰️</div>
-        <div class="pay-hint">正在生成支付宝二维码…</div>
+        <div style="font-size:42px;margin-bottom:8px">💳</div>
+        <div class="pay-hint">正在创建结账链接…</div>
       </template>
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-primary" style="flex:1" @click="openPayUrl()">{{ isMobileClient() && order?.pay_url ? '打开支付宝' : '我已支付，刷新状态' }}</button>
+        <button class="btn btn-primary" style="flex:1" @click="openPayUrl()">{{ order?.checkout_url ? '前往支付' : '刷新状态' }}</button>
         <button class="btn btn-ghost" style="flex:1" @click="closeOrderModal">取消</button>
       </div>
     </div>
@@ -490,7 +490,7 @@ const API_BASE = window.__API__ || (
 const IS_LOCAL_DEMO_ALLOWED = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 let DEMO_MODE = false; // only auto-set for local/offline preview
 const ORDER_STORAGE_KEY = 'lkj_pending_order_v2';
-const ORDER_STORAGE_VERSION = '2026-06-19-alipay-live';
+const ORDER_STORAGE_VERSION = '2026-06-20-creem-live';
 const ACCOUNT_STORAGE_KEY = 'lkj_account';
 
 // Demo state (in-memory)
@@ -503,40 +503,7 @@ const DEMO_IMGS = {
   industrial: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format',
   american:   'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&auto=format',
 };
-const DEMO_PAYMENT_QR = `data:image/svg+xml;utf8,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
-  <rect width="320" height="320" rx="24" fill="#ffffff"/>
-  <rect x="18" y="18" width="284" height="284" rx="20" fill="#f8fafc" stroke="#e2e8f0"/>
-  <rect x="42" y="42" width="72" height="72" fill="#1e293b"/>
-  <rect x="58" y="58" width="40" height="40" fill="#ffffff"/>
-  <rect x="206" y="42" width="72" height="72" fill="#1e293b"/>
-  <rect x="222" y="58" width="40" height="40" fill="#ffffff"/>
-  <rect x="42" y="206" width="72" height="72" fill="#1e293b"/>
-  <rect x="58" y="222" width="40" height="40" fill="#ffffff"/>
-  <g fill="#334155">
-    <rect x="140" y="48" width="18" height="18"/>
-    <rect x="170" y="48" width="18" height="18"/>
-    <rect x="140" y="78" width="48" height="18"/>
-    <rect x="140" y="108" width="18" height="18"/>
-    <rect x="170" y="108" width="18" height="18"/>
-    <rect x="200" y="108" width="18" height="18"/>
-    <rect x="140" y="152" width="18" height="18"/>
-    <rect x="170" y="152" width="48" height="18"/>
-    <rect x="140" y="182" width="78" height="18"/>
-    <rect x="140" y="212" width="18" height="18"/>
-    <rect x="170" y="212" width="18" height="18"/>
-    <rect x="200" y="212" width="18" height="18"/>
-    <rect x="140" y="242" width="78" height="18"/>
-    <rect x="230" y="152" width="18" height="18"/>
-    <rect x="230" y="182" width="48" height="18"/>
-    <rect x="230" y="212" width="18" height="18"/>
-    <rect x="260" y="212" width="18" height="18"/>
-    <rect x="230" y="242" width="48" height="18"/>
-  </g>
-  <text x="160" y="300" text-anchor="middle" font-size="20" fill="#2563eb" font-family="Arial, sans-serif">DEMO ALIPAY QR</text>
-</svg>
-`)}`;
-const DEMO_ALIPAY_URL = 'https://mobilecodec.alipay.com/show.htm?code=demo-face-to-face';
+const DEMO_CHECKOUT_URL = 'https://creem.io/aikison0620';
 
 async function demoReq(path, opts={}) {
   await new Promise(r=>setTimeout(r,600));
@@ -577,11 +544,10 @@ async function demoReq(path, opts={}) {
       amount: plan.price,
       name: plan.name,
       status: 'pending',
-      pay_url: DEMO_ALIPAY_URL,
-      pay_method: 'face_to_face',
-      provider: 'alipay',
-      qr_code: DEMO_ALIPAY_URL,
-      qr_image_url: DEMO_PAYMENT_QR,
+      pay_url: DEMO_CHECKOUT_URL,
+      checkout_url: DEMO_CHECKOUT_URL,
+      pay_method: 'checkout_redirect',
+      provider: 'creem',
       _credits: plan.credits
     };
   }
@@ -606,11 +572,10 @@ async function demoReq(path, opts={}) {
       amount: order.amount,
       name: order.name,
       status: order.status,
-      pay_url: DEMO_ALIPAY_URL,
-      pay_method: 'face_to_face',
-      provider: 'alipay',
-      qr_code: DEMO_ALIPAY_URL,
-      qr_image_url: DEMO_PAYMENT_QR
+      pay_url: DEMO_CHECKOUT_URL,
+      checkout_url: DEMO_CHECKOUT_URL,
+      pay_method: 'checkout_redirect',
+      provider: 'creem'
     };
   }
   return {};
@@ -739,9 +704,10 @@ const app = createApp({
         version: ORDER_STORAGE_VERSION,
         order_id: this.order.order_id,
         amount: this.order.amount || '',
-        name: this.order.name || '支付宝支付',
+        name: this.order.name || '安全支付',
         pay_url: this.order.pay_url || '',
-        qrImageUrl: this.order.qrImageUrl || '',
+        checkout_url: this.order.checkout_url || '',
+        provider: this.order.provider || 'creem',
         status: this.order.status || 'pending',
       }));
     },
@@ -749,7 +715,9 @@ const app = createApp({
       return {
         ...fallback,
         ...d,
-        qrImageUrl: d?.qr_image_url || this.normalizeQrImageUrl(d?.qr_code) || fallback.qrImageUrl || '',
+        checkout_url: d?.checkout_url || d?.pay_url || fallback.checkout_url || fallback.pay_url || '',
+        pay_url: d?.pay_url || d?.checkout_url || fallback.pay_url || fallback.checkout_url || '',
+        provider: d?.provider || fallback.provider || 'creem',
         status: d?.status || fallback.status || 'pending',
       };
     },
@@ -1014,25 +982,14 @@ const app = createApp({
       }
       finally { this.loading=false; }
     },
-    normalizeQrImageUrl(text) {
-      if (!text) return '';
-      if (/^data:image\//i.test(text)) return text;
-      if (/^https:\/\/mobilecodec\.alipay\.com\/show\.htm\?code=/i.test(text)) return text;
-      if (/^https:\/\/qr\.alipay\.com\//i.test(text)) {
-        const code = text.replace(/^https:\/\/qr\.alipay\.com\//i, '').replace(/\/+$/,'');
-        return `https://mobilecodec.alipay.com/show.htm?code=${encodeURIComponent(code)}`;
-      }
-      return /^https?:\/\//i.test(text) ? text : '';
-    },
     isMobileClient() {
       return /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent || '');
     },
     async openPayUrl() {
       if (!this.order?.order_id) return;
-      if (this.isMobileClient()) {
-        if (this.order?.pay_url) {
-          window.location.href = this.order.pay_url;
-        }
+      const url = this.order?.checkout_url || this.order?.pay_url;
+      if (url) {
+        window.location.href = url;
         return;
       }
       await this.refreshOrderStatus(this.order.order_id);
@@ -1046,9 +1003,10 @@ const app = createApp({
       this.modal = 'order';
       this.order = this.normalizeOrderPayload({ order_id: orderId }, {
         amount: '',
-        name: '支付宝支付',
+        name: '安全支付',
         pay_url: '',
-        qrImageUrl: '',
+        checkout_url: '',
+        provider: 'creem',
         status: 'pending',
         ...fallback,
       });

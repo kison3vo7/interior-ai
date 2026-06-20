@@ -90,10 +90,10 @@ docker compose up --build
 | POST | /api/payment/create | 创建支付订单 |
 | GET  | /api/payment/order/{order_id} | 查询支付订单详情 |
 | GET  | /api/payment/status/{order_id} | 查询支付状态并同步到账 |
-| POST | /api/payment/callback/alipay | 支付宝回调充值 |
+| POST | /api/payment/callback/creem | Creem Webhook 回调充值 |
 
 ## 待接入（生产必做）
-- [x] 支付宝纯扫码下单骨架（待填正式参数）
+- [x] Creem Checkout 支付骨架
 - [ ] 阿里云 OSS 图片存储
 - [ ] Redis + Celery 异步任务队列（避免 HTTP 超时）
 - [ ] 手机验证码登录（阿里云短信）
@@ -101,37 +101,38 @@ docker compose up --build
 
 ## 生产支付说明
 
-当前后端只保留一条支付链：
+当前支付链已切到 Creem：
 
-- 配置完整支付宝参数后，统一调用 `alipay.trade.precreate`
-- 前端展示支付宝当面付二维码
-- 用户支付后由回调和状态轮询同步到账
+- 前端点击充值后，跳转 Creem Checkout 页面
+- Creem 支付完成后回跳站内成功页
+- 后端通过 `checkout.completed` webhook 给订单到账并发放点数
 
 生产环境至少需要配置：
 
 ```bash
-ALIPAY_APP_ID=2021006147626992
-# 如果你后台里拿到的是旧命名，也兼容：
-# ALIPAY_APPID=2021006147626992
-ALIPAY_PRIVATE_KEY=your_private_key_pem_content
-ALIPAY_PUBLIC_KEY=alipay_public_key_pem_content
-# 如果平台更适合挂文件，也可以改用：
-# ALIPAY_PRIVATE_KEY_PATH=/app/secrets/alipay_app_private.pem
-# ALIPAY_PUBLIC_KEY_PATH=/app/secrets/alipay_public.pem
-ALIPAY_NOTIFY_URL=https://interior-ai-aemn.onrender.com/api/payment/callback/alipay
-DOMAIN=interior-ai-aemn.onrender.com
+CREEM_API_KEY=your_creem_api_key
+CREEM_WEBHOOK_SECRET=your_creem_webhook_secret
+CREEM_API_BASE=https://api.creem.io/v1
+CREEM_PRODUCT_C10=prod_xxx_for_10_credits
+CREEM_PRODUCT_C50=prod_xxx_for_50_credits
+CREEM_PRODUCT_C200=prod_xxx_for_200_credits
+CREEM_PRODUCT_C500=prod_xxx_for_500_credits
 PUBLIC_SITE_URL=https://interior-ai-aemn.onrender.com
 NEXT_PUBLIC_BASE_URL=https://interior-ai-aemn.onrender.com
+DOMAIN=interior-ai-aemn.onrender.com
 ```
 
-当前线上已经验证通过的一组口径是：
+同时在 Creem 后台把 webhook 地址设置为：
 
 ```bash
-PUBLIC_SITE_URL=https://interior-ai-aemn.onrender.com
-ALIPAY_NOTIFY_URL=https://interior-ai-aemn.onrender.com/api/payment/callback/alipay
+https://interior-ai-aemn.onrender.com/api/payment/callback/creem
 ```
 
-如果后面切正式自定义域名，再把这两个值一起替换成新域名，避免支付返回地址和异步回调地址不一致。
+如果后面切正式自定义域名，需要同步替换：
+
+- `PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_BASE_URL`
+- Creem webhook 地址
 
 ## 线上部署
 
@@ -142,5 +143,5 @@ ALIPAY_NOTIFY_URL=https://interior-ai-aemn.onrender.com/api/payment/callback/ali
 
 - 当前目录不是 Git 仓库，不能直接由我替你发到 Render
 - Render Blueprint 需要 Git 远端仓库
-- 支付宝私钥建议作为环境变量注入，或在部署平台使用 Secret 管理
-- Railway 也需要同样的环境变量；如果报重复变量，先删旧值再重新保存，不要同时保留 `ALIPAY_APP_ID` 和 `ALIPAY_APPID`
+- Creem API Key 和 Webhook Secret 建议作为环境变量注入
+- Railway 也需要同步配置相同的 Creem 与站点域名环境变量

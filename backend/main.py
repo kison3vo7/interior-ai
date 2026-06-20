@@ -1,4 +1,4 @@
-import os, uuid, sqlite3, base64, asyncio, time, json, re
+import os, uuid, sqlite3, base64, asyncio, time, json, re, hmac, hashlib
 from datetime import datetime, timedelta
 from pathlib import Path
 from io import BytesIO
@@ -19,11 +19,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, PlainTextResponse, FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import serialization as crypto_serialization
-from cryptography.hazmat.backends import default_backend
-
 load_dotenv()
 
 if register_heif_opener:
@@ -38,18 +33,16 @@ DATA_ROOT.mkdir(parents=True, exist_ok=True)
 ARK_API_KEY  = os.getenv("ARK_API_KEY", "")
 JWT_SECRET   = os.getenv("JWT_SECRET", "dev-secret")
 ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-260128")
-ALIPAY_APP_ID = os.getenv("ALIPAY_APP_ID", "") or os.getenv("ALIPAY_APPID", "")
-ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")
-ALIPAY_PUBLIC_KEY = os.getenv("ALIPAY_PUBLIC_KEY", "")
-ALIPAY_NOTIFY_URL = os.getenv("ALIPAY_NOTIFY_URL", "")
+CREEM_API_KEY = os.getenv("CREEM_API_KEY", "").strip()
+CREEM_WEBHOOK_SECRET = os.getenv("CREEM_WEBHOOK_SECRET", "").strip()
+CREEM_API_BASE = os.getenv("CREEM_API_BASE", "https://api.creem.io/v1").strip().rstrip("/")
+CREEM_PRODUCT_C10 = os.getenv("CREEM_PRODUCT_C10", "").strip()
+CREEM_PRODUCT_C50 = os.getenv("CREEM_PRODUCT_C50", "").strip()
+CREEM_PRODUCT_C200 = os.getenv("CREEM_PRODUCT_C200", "").strip()
+CREEM_PRODUCT_C500 = os.getenv("CREEM_PRODUCT_C500", "").strip()
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "")
 NEXT_PUBLIC_BASE_URL = os.getenv("NEXT_PUBLIC_BASE_URL", "")
 DOMAIN = os.getenv("DOMAIN", "")
-ALIPAY_GATEWAY = os.getenv("ALIPAY_GATEWAY", "https://openapi.alipay.com/gateway.do")
-ALIPAY_PRIVATE_KEY_PATH = os.getenv("ALIPAY_PRIVATE_KEY_PATH", "")
-ALIPAY_PUBLIC_KEY_PATH = os.getenv("ALIPAY_PUBLIC_KEY_PATH", "")
-ALIPAY_PRIVATE_KEY_B64 = os.getenv("ALIPAY_PRIVATE_KEY_B64", "")
-ALIPAY_PUBLIC_KEY_B64 = os.getenv("ALIPAY_PUBLIC_KEY_B64", "")
 UPLOAD_DIR   = UPLOAD_ROOT
 DATA_DIR     = DATA_ROOT
 DB_PATH      = DATA_DIR / "app.db"
@@ -81,6 +74,17 @@ app.mount("/uploads", StaticFiles(directory=str(UPLOAD_ROOT)), name="uploads")
 
 security = HTTPBearer(auto_error=False)
 
+ORDER_EXTRA_COLUMNS = {
+    "provider": "TEXT DEFAULT 'creem'",
+    "provider_checkout_id": "TEXT",
+    "provider_order_id": "TEXT",
+    "provider_product_id": "TEXT",
+    "provider_checkout_url": "TEXT",
+    "provider_request_id": "TEXT",
+    "provider_customer_email": "TEXT",
+    "paid_at": "TEXT",
+}
+
 # ─── DB ───────────────────────────────────────────────
 USING_POSTGRES = DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")
 
@@ -89,6 +93,21 @@ def _sqlite_param_sql(sql: str) -> str:
 
 def _pg_conn_kwargs() -> dict:
     return {"autocommit": False}
+
+def _ensure_orders_schema(db) -> None:
+    if USING_POSTGRES:
+        cur = db.cursor()
+        for name, spec in ORDER_EXTRA_COLUMNS.items():
+            cur.execute(f"ALTER TABLE orders ADD COLUMN IF NOT EXISTS {name} {spec}")
+        db.commit()
+        return
+
+    rows = db.execute("PRAGMA table_info(orders)").fetchall()
+    existing = {row[1] for row in rows}
+    for name, spec in ORDER_EXTRA_COLUMNS.items():
+        if name not in existing:
+            db.execute(f"ALTER TABLE orders ADD COLUMN {name} {spec}")
+    db.commit()
 
 def get_db():
     if USING_POSTGRES:
@@ -118,9 +137,18 @@ def get_db():
             amount INTEGER,
             credits INTEGER,
             status TEXT DEFAULT 'pending',
-            created_at TEXT
+            created_at TEXT,
+            provider TEXT DEFAULT 'creem',
+            provider_checkout_id TEXT,
+            provider_order_id TEXT,
+            provider_product_id TEXT,
+            provider_checkout_url TEXT,
+            provider_request_id TEXT,
+            provider_customer_email TEXT,
+            paid_at TEXT
         )""")
         conn.commit()
+        _ensure_orders_schema(conn)
         return conn
 
     conn = sqlite3.connect(DB_PATH)
@@ -134,8 +162,12 @@ def get_db():
         status TEXT DEFAULT 'pending', error TEXT, created_at TEXT)""")
     conn.execute("""CREATE TABLE IF NOT EXISTS orders(
         id TEXT PRIMARY KEY, user_id INTEGER, plan_id TEXT,
-        amount INTEGER, credits INTEGER, status TEXT DEFAULT 'pending', created_at TEXT)""")
+        amount INTEGER, credits INTEGER, status TEXT DEFAULT 'pending', created_at TEXT,
+        provider TEXT DEFAULT 'creem', provider_checkout_id TEXT, provider_order_id TEXT,
+        provider_product_id TEXT, provider_checkout_url TEXT, provider_request_id TEXT,
+        provider_customer_email TEXT, paid_at TEXT)""")
     conn.commit()
+    _ensure_orders_schema(conn)
     return conn
 
 def db_execute(db, sql: str, params=()):
@@ -186,81 +218,43 @@ def _site_base_url() -> str:
         return DOMAIN.rstrip("/") if DOMAIN.startswith("http") else f"https://{DOMAIN.strip('/')}"
     return "http://127.0.0.1:8000"
 
-def _alipay_enabled() -> bool:
-    has_private = bool(ALIPAY_PRIVATE_KEY or ALIPAY_PRIVATE_KEY_PATH or ALIPAY_PRIVATE_KEY_B64)
-    has_public = bool(ALIPAY_PUBLIC_KEY or ALIPAY_PUBLIC_KEY_PATH or ALIPAY_PUBLIC_KEY_B64)
-    return all([ALIPAY_APP_ID, has_private, has_public, ALIPAY_NOTIFY_URL])
-
-def _normalize_pem(raw: str, kind: str) -> str:
-    value = (raw or "").strip().strip('"').strip("'").replace("\\n", "\n")
-    if "BEGIN" in value:
-        return value
-    header = "PRIVATE KEY" if kind == "private" else "PUBLIC KEY"
-    return f"-----BEGIN {header}-----\n{value}\n-----END {header}-----"
-
-def _load_alipay_private_key():
-    if ALIPAY_PRIVATE_KEY_B64:
-        return serialization.load_pem_private_key(
-            base64.b64decode(ALIPAY_PRIVATE_KEY_B64),
-            password=None,
-        )
-    if ALIPAY_PRIVATE_KEY_PATH:
-        return serialization.load_pem_private_key(
-            Path(ALIPAY_PRIVATE_KEY_PATH).read_bytes(),
-            password=None,
-        )
-    return serialization.load_pem_private_key(
-        _normalize_pem(ALIPAY_PRIVATE_KEY, "private").encode(),
-        password=None,
-    )
-
-def _load_alipay_public_key():
-    if ALIPAY_PUBLIC_KEY_B64:
-        return serialization.load_pem_public_key(base64.b64decode(ALIPAY_PUBLIC_KEY_B64))
-    if ALIPAY_PUBLIC_KEY_PATH:
-        return serialization.load_pem_public_key(Path(ALIPAY_PUBLIC_KEY_PATH).read_bytes())
-    return serialization.load_pem_public_key(
-        _normalize_pem(ALIPAY_PUBLIC_KEY, "public").encode()
-    )
-
-def _alipay_sign(params: dict) -> str:
-    content = "&".join(f"{k}={params[k]}" for k in sorted(params))
-    signature = _load_alipay_private_key().sign(
-        content.encode(),
-        padding.PKCS1v15(),
-        hashes.SHA256(),
-    )
-    return base64.b64encode(signature).decode()
-
-def _alipay_verify(params: dict) -> bool:
-    signature = params.get("sign", "")
-    if not signature:
-        return False
-    content = "&".join(
-        f"{k}={params[k]}"
-        for k in sorted(k for k in params.keys() if k not in {"sign", "sign_type"})
-    )
-    try:
-        _load_alipay_public_key().verify(
-            base64.b64decode(signature),
-            content.encode(),
-            padding.PKCS1v15(),
-            hashes.SHA256(),
-        )
-        return True
-    except Exception:
-        return False
-
-def _parse_alipay_json(raw: bytes) -> dict:
-    for enc in ("utf-8", "gb18030", "gbk"):
-        try:
-            return json.loads(raw.decode(enc))
-        except Exception:
-            continue
-    raise RuntimeError("支付宝响应解析失败")
-
 def _payment_return_url(order_id: str) -> str:
     return f"{_site_base_url()}/?payment=return&order_id={order_id}"
+
+def _creem_enabled() -> bool:
+    return bool(
+        CREEM_API_KEY
+        and CREEM_WEBHOOK_SECRET
+        and CREEM_PRODUCT_C10
+        and CREEM_PRODUCT_C50
+        and CREEM_PRODUCT_C200
+        and CREEM_PRODUCT_C500
+    )
+
+def _creem_callback_url() -> str:
+    return f"{_site_base_url()}/api/payment/callback/creem"
+
+def _creem_plan_product_id(plan_id: str) -> str:
+    mapping = {
+        "c10": CREEM_PRODUCT_C10,
+        "c50": CREEM_PRODUCT_C50,
+        "c200": CREEM_PRODUCT_C200,
+        "c500": CREEM_PRODUCT_C500,
+    }
+    return mapping.get(plan_id, "").strip()
+
+def _payment_payload_base(order_id: str, plan: dict, status: str = "pending") -> dict:
+    return {
+        "order_id": order_id,
+        "amount": plan["price"],
+        "name": plan["name"],
+        "status": status,
+        "provider": "creem",
+        "pay_method": "checkout_redirect",
+        "pay_url": "",
+        "checkout_url": "",
+        "return_url": _payment_return_url(order_id),
+    }
 
 def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: str | None = None) -> bool:
     db = get_db()
@@ -276,13 +270,19 @@ def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: s
             return True
         if total_amount is not None:
             try:
-                if int(float(total_amount)) != int(amount):
+                paid_amount = int(float(total_amount))
+                expected_amount = int(amount)
+                if paid_amount not in {expected_amount, expected_amount * 100}:
                     db.rollback()
                     raise RuntimeError("支付金额不一致")
             except ValueError:
                 db.rollback()
                 raise RuntimeError("支付金额解析失败")
-        db_execute(db, "UPDATE orders SET status='paid' WHERE id=%s AND status<>'paid'", (order_id,))
+        db_execute(
+            db,
+            "UPDATE orders SET status='paid', provider_order_id=COALESCE(provider_order_id, %s), paid_at=%s WHERE id=%s AND status<>'paid'",
+            (trade_no, datetime.utcnow().isoformat(), order_id),
+        )
         db_execute(db, "UPDATE users SET credits=credits+%s WHERE id=%s", (credits, user_id))
         db.commit()
         return True
@@ -293,112 +293,115 @@ def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: s
             pass
         raise
 
-async def _alipay_api_call(method: str, biz_content: dict) -> dict:
-    params = {
-        "app_id": ALIPAY_APP_ID,
-        "method": method,
-        "charset": "UTF-8",
-        "sign_type": "RSA2",
-        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-        "version": "1.0",
-        "biz_content": json.dumps(biz_content, ensure_ascii=True, separators=(",", ":")),
-    }
-    params["sign"] = _alipay_sign(params)
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(ALIPAY_GATEWAY, data=params)
-    return _parse_alipay_json(resp.content)
-
-async def _query_alipay_trade(order_id: str) -> dict:
-    data = await _alipay_api_call("alipay.trade.query", {"out_trade_no": order_id})
-    return data.get("alipay_trade_query_response", {})
-
-async def _precreate_alipay_trade(order_id: str, plan: dict) -> dict:
-    params = {
-        "app_id": ALIPAY_APP_ID,
-        "method": "alipay.trade.precreate",
-        "charset": "UTF-8",
-        "sign_type": "RSA2",
-        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-        "version": "1.0",
-        "notify_url": ALIPAY_NOTIFY_URL,
-        "biz_content": json.dumps({
-            "out_trade_no": order_id,
-            "total_amount": f"{plan['price']:.2f}",
-            "subject": plan["name"],
-            "product_code": "FACE_TO_FACE_PAYMENT",
-            "timeout_express": "15m",
-        }, ensure_ascii=True, separators=(",", ":")),
-    }
-    params["sign"] = _alipay_sign(params)
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(ALIPAY_GATEWAY, data=params)
-    data = _parse_alipay_json(resp.content)
-    return data.get("alipay_trade_precreate_response", {})
-
-def _alipay_qr_display_url(qr_code: str | None) -> str | None:
-    if not qr_code:
-        return None
-    qr_code = qr_code.strip()
-    if re.match(r"^https://mobilecodec\.alipay\.com/show\.htm\?code=", qr_code, re.I):
-        return qr_code
-    if re.match(r"^https://qr\.alipay\.com/", qr_code, re.I):
-        code = re.sub(r"^https://qr\.alipay\.com/", "", qr_code, flags=re.I).rstrip("/")
-        return f"https://mobilecodec.alipay.com/show.htm?code={code}"
-    return qr_code if qr_code.startswith("https://") else None
-
-def _payment_payload_base(order_id: str, plan: dict, status: str = "pending") -> dict:
+def _creem_headers() -> dict:
     return {
-        "order_id": order_id,
-        "amount": plan["price"],
-        "name": plan["name"],
-        "status": status,
-        "pay_url": "",
-        "pay_method": "face_to_face",
-        "provider": "alipay",
-        "return_url": _payment_return_url(order_id),
-        "qr_code": None,
-        "qr_image_url": None,
-        "app_id": ALIPAY_APP_ID,
+        "x-api-key": CREEM_API_KEY,
+        "Content-Type": "application/json",
     }
+
+async def _creem_create_checkout(order_id: str, user: tuple, plan_id: str, plan: dict) -> dict:
+    if not _creem_enabled():
+        raise HTTPException(503, "Creem 支付参数未配置完整")
+
+    product_id = _creem_plan_product_id(plan_id)
+    if not product_id:
+        raise HTTPException(503, f"Creem 商品未配置：{plan_id}")
+
+    user_id, phone = user[0], user[1]
+    customer_email = f"{phone}@lingkj.local"
+    payload = {
+        "product_id": product_id,
+        "request_id": order_id,
+        "units": 1,
+        "customer": {
+            "email": customer_email,
+            "name": f"灵感空间AI用户 {phone}",
+        },
+        "success_url": _payment_return_url(order_id),
+        "metadata": {
+            "internal_order_id": order_id,
+            "user_id": str(user_id),
+            "plan_id": plan_id,
+            "credits": str(plan["credits"]),
+            "phone": phone,
+        },
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.post(
+            f"{CREEM_API_BASE}/checkouts",
+            headers=_creem_headers(),
+            json=payload,
+        )
+    if not resp.is_success:
+        detail = resp.text.strip() or resp.reason_phrase
+        print(f"[creem] create checkout failed order={order_id} status={resp.status_code} body={detail}", flush=True)
+        raise HTTPException(502, f"Creem 创建支付失败：{detail}")
+    return resp.json()
 
 async def _build_order_payment_payload(order_id: str, plan: dict) -> dict:
-    if not _alipay_enabled():
-        raise HTTPException(503, "支付宝当面付参数未配置完整")
-    payload = _payment_payload_base(order_id, plan)
-    try:
-        precreate = await _precreate_alipay_trade(order_id, plan)
-    except Exception as exc:
-        print(f"[alipay] precreate exception order={order_id} err={type(exc).__name__}", flush=True)
-        raise HTTPException(502, "支付宝当面付创建失败")
-    code = precreate.get("code")
-    qr_code = precreate.get("qr_code") or precreate.get("qr_code_url")
-    if code == "10000" and qr_code:
-        pay_url = _alipay_qr_display_url(qr_code) or ""
+    db = get_db()
+    row = db_execute(
+        db,
+        "SELECT user_id, plan_id, provider_checkout_id, provider_checkout_url, status FROM orders WHERE id=%s",
+        (order_id,),
+    ).fetchone()
+    if not row:
+        raise HTTPException(404, "订单不存在")
+    user_id, plan_id, checkout_id, checkout_url, status = row
+    user_row = _require_user_row(db, user_id)
+    payload = _payment_payload_base(order_id, plan, status=status or "pending")
+    if checkout_url and status != "paid":
         payload.update({
-            "pay_url": pay_url,
-            "qr_code": qr_code,
-            "qr_image_url": pay_url or None,
+            "pay_url": checkout_url,
+            "checkout_url": checkout_url,
+            "checkout_id": checkout_id,
+            "provider_product_id": _creem_plan_product_id(plan_id),
+            "webhook_url": _creem_callback_url(),
         })
         return payload
-    reason = precreate.get("sub_msg") or precreate.get("msg") or precreate.get("sub_code") or code or "unknown"
-    print(f"[alipay] precreate rejected order={order_id} reason={reason}", flush=True)
-    if "ACCESS_FORBIDDEN" in str(reason):
-        raise HTTPException(502, "当前支付宝应用未开通当面付，后台仅开通了电脑网站支付/手机网站支付")
-    raise HTTPException(502, f"支付宝当面付创建失败：{reason}")
 
-async def _sync_alipay_order(order_id: str) -> tuple[bool, str | None]:
-    if not _alipay_enabled():
-        return False, None
     try:
-        result = await _query_alipay_trade(order_id)
+        checkout = await _creem_create_checkout(order_id, user_row, plan_id, plan)
+    except HTTPException:
+        raise
     except Exception as exc:
-        print(f"[alipay] query exception order={order_id} err={type(exc).__name__}", flush=True)
-        return False, None
-    trade_status = result.get("trade_status", "")
-    if trade_status in {"TRADE_SUCCESS", "TRADE_FINISHED"}:
-        _mark_order_paid(order_id, result.get("total_amount"), result.get("trade_no"))
-        return True, result.get("trade_no")
-    return False, result.get("trade_no")
+        print(f"[creem] create checkout exception order={order_id} err={type(exc).__name__}", flush=True)
+        raise HTTPException(502, "Creem 创建支付失败")
+
+    checkout_id = checkout.get("id", "")
+    checkout_url = checkout.get("checkout_url") or checkout.get("url") or ""
+    provider_order_id = ((checkout.get("order") or {}).get("id")) or ""
+    provider_product_id = ((checkout.get("product") or {}).get("id")) or _creem_plan_product_id(plan_id)
+    customer = checkout.get("customer") or {}
+    customer_email = customer.get("email") or f"{user_row[1]}@lingkj.local"
+    db_execute(
+        db,
+        """UPDATE orders
+           SET provider=%s,
+               provider_checkout_id=%s,
+               provider_order_id=%s,
+               provider_product_id=%s,
+               provider_checkout_url=%s,
+               provider_request_id=%s,
+               provider_customer_email=%s
+           WHERE id=%s""",
+        ("creem", checkout_id, provider_order_id, provider_product_id, checkout_url, order_id, customer_email, order_id),
+    )
+    db.commit()
+    payload.update({
+        "pay_url": checkout_url,
+        "checkout_url": checkout_url,
+        "checkout_id": checkout_id,
+        "provider_product_id": provider_product_id,
+        "webhook_url": _creem_callback_url(),
+    })
+    return payload
+
+def _creem_signature_valid(raw_body: bytes, signature: str | None) -> bool:
+    if not CREEM_WEBHOOK_SECRET or not signature:
+        return False
+    digest = hmac.new(CREEM_WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(digest, signature.strip())
 
 def _set_auth_cookie(response: Response, token: str):
     response.set_cookie(
@@ -742,11 +745,27 @@ async def create_order(r: OrderReq, uid=Depends(current_uid)):
     plan = PLANS.get(r.plan_id)
     if not plan:
         raise HTTPException(400, "无效套餐")
-    _require_user_row(get_db(), uid)
-    oid = f"LKJ{int(time.time())}{uuid.uuid4().hex[:6].upper()}"
     db = get_db()
-    db_execute(db, "INSERT INTO orders (id, user_id, plan_id, amount, credits, status, created_at) VALUES(%s,%s,%s,%s,%s,%s,%s)",
-               (oid, uid, r.plan_id, plan["price"], plan["credits"], "pending", datetime.utcnow().isoformat()))
+    _require_user_row(db, uid)
+    oid = f"LKJ{int(time.time())}{uuid.uuid4().hex[:6].upper()}"
+    db_execute(
+        db,
+        """INSERT INTO orders
+           (id, user_id, plan_id, amount, credits, status, created_at, provider, provider_product_id, provider_request_id)
+           VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+        (
+            oid,
+            uid,
+            r.plan_id,
+            plan["price"],
+            plan["credits"],
+            "pending",
+            datetime.utcnow().isoformat(),
+            "creem",
+            _creem_plan_product_id(r.plan_id),
+            oid,
+        ),
+    )
     db.commit()
     return await _build_order_payment_payload(oid, plan)
 
@@ -756,22 +775,17 @@ async def order_status(order_id: str, uid=Depends(current_uid)):
     _require_user_row(db, uid)
     row = db_execute(
         db,
-        "SELECT status FROM orders WHERE id=%s AND user_id=%s",
+        "SELECT status, provider_order_id FROM orders WHERE id=%s AND user_id=%s",
         (order_id, uid),
     ).fetchone()
     if not row:
         raise HTTPException(404, "订单不存在")
-    status = row[0]
-    trade_no = None
-    if status != "paid" and _alipay_enabled():
-        paid, trade_no = await _sync_alipay_order(order_id)
-        if paid:
-            status = "paid"
+    status, provider_order_id = row
     user_credits = db_execute(db, "SELECT credits FROM users WHERE id=%s", (uid,)).fetchone()[0]
     return {
         "status": status,
         "credits": user_credits,
-        "trade_no": trade_no,
+        "trade_no": provider_order_id,
     }
 
 @app.get("/api/payment/order/{order_id}")
@@ -780,40 +794,80 @@ async def order_detail(order_id: str, uid=Depends(current_uid)):
     _require_user_row(db, uid)
     row = db_execute(
         db,
-        "SELECT plan_id, status FROM orders WHERE id=%s AND user_id=%s",
+        "SELECT plan_id, status, provider_checkout_id, provider_checkout_url, provider_product_id, provider_order_id FROM orders WHERE id=%s AND user_id=%s",
         (order_id, uid),
     ).fetchone()
     if not row:
         raise HTTPException(404, "订单不存在")
-    plan_id, status = row
+    plan_id, status, checkout_id, checkout_url, provider_product_id, provider_order_id = row
     plan = PLANS.get(plan_id)
     if not plan:
         raise HTTPException(400, "无效套餐")
-    paid_trade_no = None
-    if status != "paid" and _alipay_enabled():
-        paid, paid_trade_no = await _sync_alipay_order(order_id)
-        if paid:
-            status = "paid"
     if status == "paid":
         payload = _payment_payload_base(order_id, plan, status="paid")
     else:
         payload = await _build_order_payment_payload(order_id, plan)
         payload["status"] = status
-    payload["trade_no"] = paid_trade_no
+    payload["checkout_id"] = checkout_id
+    payload["checkout_url"] = checkout_url or payload.get("checkout_url", "")
+    payload["pay_url"] = payload.get("checkout_url") or checkout_url or ""
+    payload["provider_product_id"] = provider_product_id or _creem_plan_product_id(plan_id)
+    payload["trade_no"] = provider_order_id
+    payload["webhook_url"] = _creem_callback_url()
     return payload
 
-@app.post("/api/payment/callback/alipay")
-async def alipay_cb(request: Request):
-    form = dict(await request.form())
-    if not _alipay_enabled():
-        return PlainTextResponse("fail")
-    if not _alipay_verify(form):
-        return PlainTextResponse("fail")
-    oid = form.get("out_trade_no", "")
-    trade_status = form.get("trade_status", "")
-    if trade_status in {"TRADE_SUCCESS", "TRADE_FINISHED"}:
-        try:
-            _mark_order_paid(oid, form.get("total_amount"), form.get("trade_no"))
-        except Exception:
-            return PlainTextResponse("fail")
-    return PlainTextResponse("success")
+@app.post("/api/payment/callback/creem")
+async def creem_cb(request: Request):
+    raw_body = await request.body()
+    signature = request.headers.get("creem-signature")
+    if not _creem_signature_valid(raw_body, signature):
+        return PlainTextResponse("invalid signature", status_code=400)
+
+    try:
+        payload = json.loads(raw_body.decode("utf-8"))
+    except Exception:
+        return PlainTextResponse("invalid payload", status_code=400)
+
+    event_type = payload.get("eventType") or payload.get("type") or ""
+    if event_type != "checkout.completed":
+        return PlainTextResponse("ignored")
+
+    obj = payload.get("object") or {}
+    metadata = obj.get("metadata") or {}
+    internal_order_id = (
+        metadata.get("internal_order_id")
+        or metadata.get("order_id")
+        or obj.get("request_id")
+        or payload.get("request_id")
+    )
+    if not internal_order_id:
+        return PlainTextResponse("missing order id", status_code=400)
+
+    order_info = obj.get("order") or {}
+    total_amount = order_info.get("amount")
+    provider_order_id = order_info.get("id") or obj.get("id")
+
+    db = get_db()
+    db_execute(
+        db,
+        """UPDATE orders
+           SET provider=%s,
+               provider_checkout_id=COALESCE(provider_checkout_id, %s),
+               provider_order_id=COALESCE(provider_order_id, %s),
+               provider_checkout_url=COALESCE(provider_checkout_url, %s)
+           WHERE id=%s""",
+        (
+            "creem",
+            obj.get("id"),
+            provider_order_id,
+            obj.get("checkout_url") or obj.get("url") or "",
+            internal_order_id,
+        ),
+    )
+    db.commit()
+
+    try:
+        _mark_order_paid(internal_order_id, total_amount, provider_order_id)
+    except Exception:
+        return PlainTextResponse("mark paid failed", status_code=400)
+    return PlainTextResponse("ok")

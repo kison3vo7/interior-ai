@@ -13,27 +13,25 @@ services:
         sync: false
       - key: ARK_IMAGE_MODEL
         value: doubao-seedream-5-0-260128
-      - key: ALIPAY_APP_ID
+      - key: CREEM_API_KEY
         sync: false
-      - key: ALIPAY_PRIVATE_KEY
+      - key: CREEM_WEBHOOK_SECRET
         sync: false
-      - key: ALIPAY_PUBLIC_KEY
+      - key: CREEM_API_BASE
+        value: https://api.creem.io/v1
+      - key: CREEM_PRODUCT_C10
         sync: false
-      - key: ALIPAY_PRIVATE_KEY_PATH
-        value: /etc/secrets/app_private_key.pem
-      - key: ALIPAY_PUBLIC_KEY_PATH
-        value: /etc/secrets/alipay_public_key.pem
-      - key: ALIPAY_NOTIFY_URL
+      - key: CREEM_PRODUCT_C50
+        sync: false
+      - key: CREEM_PRODUCT_C200
+        sync: false
+      - key: CREEM_PRODUCT_C500
         sync: false
       - key: DOMAIN
         sync: false
       - key: PUBLIC_SITE_URL
         sync: false
       - key: NEXT_PUBLIC_BASE_URL
-        sync: false
-      - key: MANUAL_PAYMENT_QR_URL
-        sync: false
-      - key: MANUAL_PAYMENT_LABEL
         sync: false
       - key: APP_DATA_ROOT
         value: /var/data
