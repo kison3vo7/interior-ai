@@ -315,7 +315,6 @@ async def _creem_create_checkout(order_id: str, user: tuple, plan_id: str, plan:
         "units": 1,
         "customer": {
             "email": customer_email,
-            "name": f"灵感空间AI用户 {phone}",
         },
         "success_url": _payment_return_url(order_id),
         "metadata": {
