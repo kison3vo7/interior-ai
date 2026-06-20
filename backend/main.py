@@ -337,7 +337,7 @@ async def _creem_create_checkout(order_id: str, user: tuple, plan_id: str, plan:
         raise HTTPException(502, f"Creem 创建支付失败：{detail}")
     return resp.json()
 
-async def _build_order_payment_payload(order_id: str, plan: dict) -> dict:
+async def _build_order_payment_payload(order_id: str, plan: dict, force_refresh: bool = False) -> dict:
     db = get_db()
     row = db_execute(
         db,
@@ -349,7 +349,7 @@ async def _build_order_payment_payload(order_id: str, plan: dict) -> dict:
     user_id, plan_id, checkout_id, checkout_url, status = row
     user_row = _require_user_row(db, user_id)
     payload = _payment_payload_base(order_id, plan, status=status or "pending")
-    if checkout_url and status != "paid":
+    if checkout_url and status != "paid" and not force_refresh:
         payload.update({
             "pay_url": checkout_url,
             "checkout_url": checkout_url,
@@ -811,7 +811,7 @@ async def order_detail(order_id: str, uid=Depends(current_uid)):
     if status == "paid":
         payload = _payment_payload_base(order_id, plan, status="paid")
     else:
-        payload = await _build_order_payment_payload(order_id, plan)
+        payload = await _build_order_payment_payload(order_id, plan, force_refresh=True)
         payload["status"] = status
     payload["checkout_id"] = checkout_id
     payload["checkout_url"] = checkout_url or payload.get("checkout_url", "")
