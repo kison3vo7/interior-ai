@@ -369,8 +369,14 @@ async def _build_order_payment_payload(order_id: str, plan: dict) -> dict:
 
     checkout_id = checkout.get("id", "")
     checkout_url = checkout.get("checkout_url") or checkout.get("url") or ""
-    provider_order_id = ((checkout.get("order") or {}).get("id")) or ""
-    provider_product_id = ((checkout.get("product") or {}).get("id")) or _creem_plan_product_id(plan_id)
+    order_obj = checkout.get("order") or {}
+    product_obj = checkout.get("product") or {}
+    provider_order_id = order_obj.get("id") if isinstance(order_obj, dict) else str(order_obj or "")
+    provider_product_id = (
+        product_obj.get("id")
+        if isinstance(product_obj, dict)
+        else str(product_obj or "")
+    ) or _creem_plan_product_id(plan_id)
     customer = checkout.get("customer") or {}
     customer_email = customer.get("email") or f"{user_row[1]}@lingkj.local"
     db_execute(
