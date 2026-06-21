@@ -8,6 +8,7 @@ RUN python -m pip install --upgrade pip setuptools wheel \
 
 COPY backend ./backend
 COPY index.html ./index.html
+COPY admin.html ./admin.html
 
 RUN mkdir -p /app/backend/uploads /app/backend/data
 
