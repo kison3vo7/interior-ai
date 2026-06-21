@@ -53,6 +53,16 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .history-card{background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
 .history-card img{width:100%;height:140px;object-fit:cover}
 .history-info{padding:10px;font-size:12px;color:var(--muted)}
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+.admin-stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px}
+.admin-stat .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.admin-stat .v{font-size:28px;font-weight:800;color:var(--p);margin-top:8px}
+.admin-section{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-top:18px}
+.admin-table{width:100%;border-collapse:collapse;font-size:13px}
+.admin-table th,.admin-table td{padding:12px;border-top:1px solid var(--border);text-align:left;vertical-align:top}
+.admin-table th{background:#f8fafc;border-top:none;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.admin-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.admin-actions input{padding:8px 10px;border:1px solid var(--border);border-radius:8px;width:110px}
 /* PRICING */
 .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 .plan{border:2px solid var(--border);border-radius:14px;padding:20px;transition:.15s;cursor:pointer}
@@ -141,21 +151,22 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 
 <!-- NAV -->
 <nav>
-  <div class="logo">🏠 灵感空间AI</div>
+  <div class="logo">🏠 Linggan Space AI</div>
   <div class="nav-links">
-    <a @click="page='home'">首页</a>
-    <a @click="goGenerate">在线生成</a>
-    <a @click="goHistory" v-if="user">历史记录</a>
+    <a @click="page='home'">Home</a>
+    <a @click="goGenerate">Generate</a>
+    <a @click="goHistory" v-if="user">History</a>
+    <a @click="goBilling" v-if="user">Billing</a>
   </div>
   <div class="nav-right">
     <template v-if="user">
-      <span class="credits-tag">💎 {{ user.credits }} 次</span>
-      <button class="btn btn-ghost" @click="modal='payment'">充值</button>
-      <button class="btn btn-ghost" @click="logout">退出</button>
+      <span class="credits-tag">💎 {{ user.credits }} credits</span>
+      <button class="btn btn-ghost" @click="modal='payment'">Upgrade</button>
+      <button class="btn btn-ghost" @click="logout">Log out</button>
     </template>
     <template v-else>
-      <button class="btn btn-ghost" @click="openAuth('login')">登录</button>
-      <button class="btn btn-primary" @click="openAuth('register')">免费注册</button>
+      <button class="btn btn-ghost" @click="openAuth('login')">Log in</button>
+      <button class="btn btn-primary" @click="openAuth('register')">Start Free</button>
     </template>
   </div>
 </nav>
@@ -163,15 +174,15 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 <!-- ===== HOME PAGE ===== -->
 <template v-if="page==='home'">
   <div class="hero">
-    <p style="display:inline-flex;align-items:center;gap:6px;background:#ede9fe;color:var(--p);font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px;margin-bottom:18px">🚀 灵感空间AI · 12种风格 · 完整设计方案</p>
-    <h1>一张照片<br><em>秒变精装效果图</em></h1>
-    <p>上传真实房间照片，系统会结合空间结构、采光和布局生成可参考的家装设计方案。支持 12 种热门装修风格切换，可直接购买点数或开通会员在线生成与下载效果图。</p>
+    <p style="display:inline-flex;align-items:center;gap:6px;background:#ede9fe;color:var(--p);font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px;margin-bottom:18px">🚀 Linggan Space AI · 12 styles · 2 free generations</p>
+    <h1>Redesign Any Room<br><em>from a Single Photo</em></h1>
+    <p>Upload a real room photo, choose your preferred style, and generate realistic AI interior redesign concepts. Built for homeowners, decorators, and designers who want fast visual direction without touching complex software.</p>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <button class="btn btn-primary" style="padding:13px 28px;font-size:16px" @click="goGenerate">立即体验</button>
-      <button class="btn btn-ghost" style="padding:13px 28px;font-size:16px" @click="page='pricing'">查看定价</button>
+      <button class="btn btn-primary" style="padding:13px 28px;font-size:16px" @click="goGenerate">Start Free</button>
+      <button class="btn btn-ghost" style="padding:13px 28px;font-size:16px" @click="page='pricing'">View Pricing</button>
     </div>
     <div style="display:flex;justify-content:center;gap:40px;margin-top:48px;flex-wrap:wrap">
-      <div style="text-align:center" v-for="s in [{n:'10秒',l:'单张生成速度'},{n:'12种',l:'热门装修风格'},{n:'完整方案',l:'按房间结构生成'},{n:'¥3起',l:'单张生成费用'}]">
+      <div style="text-align:center" v-for="s in [{n:'10s',l:'Typical generation speed'},{n:'12',l:'Interior styles'},{n:'Layout-aware',l:'Room-based redesigns'},{n:'$5.99',l:'Starter price'}]">
         <div style="font-size:26px;font-weight:800;color:var(--p)">{{s.n}}</div>
         <div style="font-size:13px;color:var(--muted)">{{s.l}}</div>
       </div>
@@ -179,15 +190,15 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
   <section class="section section-light">
     <div class="section-title">
-      <h2>灵感空间AI卖什么</h2>
-      <p>这是一个面向普通家庭装修、软装参考和设计沟通的在线 AI 家装效果图服务，用户购买生成次数后即可上传房间照片，选择喜欢的风格并获得成品效果图。</p>
+      <h2>What Linggan Space AI Offers</h2>
+      <p>An online AI interior design tool that turns room photos into redesign concepts. Sign up with email, get 2 free generations, then continue with flexible paid plans.</p>
     </div>
     <div class="feature-grid">
       <div class="feature-card" v-for="f in [
-        {icon:'🖼️',title:'上传真实房间照片',desc:'支持客厅、卧室、餐厅、书房、儿童房等室内空间照片上传。'},
-        {icon:'🧠',title:'识别空间结构',desc:'根据房间格局、窗户、墙面、家具位置生成对应的装修参考方案。'},
-        {icon:'🎨',title:'12种热门装修风格',desc:'现代简约、北欧、新中式、轻奢、奶油、侘寂、原木、法式等可随时切换。'},
-        {icon:'💳',title:'点数包与会员购买',desc:'支持按次充值和会员开通，购买后立即获得可用生成次数。'}
+        {icon:'🖼️',title:'Upload a real room photo',desc:'Works for living rooms, bedrooms, dining areas, studies, and more.'},
+        {icon:'🧠',title:'Preserve room structure',desc:'The output follows your original room layout, windows, walls, and camera angle.'},
+        {icon:'🎨',title:'12 popular design styles',desc:'Switch between modern, Scandinavian, cream, Wabi-Sabi, French, industrial, and more.'},
+        {icon:'💳',title:'Buy credits or memberships',desc:'Choose the plan that fits your usage and continue generating right away.'}
       ]">
         <div style="font-size:30px">{{ f.icon }}</div>
         <h3>{{ f.title }}</h3>
@@ -198,15 +209,15 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 
   <section class="section" style="background:#1e293b;text-align:center">
     <div class="section-title" style="margin-bottom:40px">
-      <h2 style="color:#fff">三步生成效果图</h2>
-      <p style="color:#94a3b8">无需建模，无需复杂软件，打开网页即可下单使用</p>
+      <h2 style="color:#fff">How It Works</h2>
+      <p style="color:#94a3b8">No CAD, no 3D software, no design experience required.</p>
     </div>
     <div class="process-grid">
       <div class="process-card" v-for="s in [
-        {n:'1',t:'上传房间照片',d:'用户上传真实房间照片，系统读取画面中的结构、开窗、采光与家具布局。'},
-        {n:'2',t:'选择装修风格',d:'从 12 种热门家装风格中选择喜欢的设计方向，支持反复切换比较。'},
-        {n:'3',t:'在线支付购买',d:'可先注册领取体验次数，也可直接充值点数包或开通会员继续生成。'},
-        {n:'4',t:'下载设计结果',d:'生成完成后可查看、下载高清效果图，用于装修参考与沟通展示。'}
+        {n:'1',t:'Upload your room photo',d:'Start with a real photo of your room so the AI can keep the original structure.'},
+        {n:'2',t:'Choose a design style',d:'Compare multiple looks until you find one that matches your taste.'},
+        {n:'3',t:'Generate or upgrade',d:'Sign up for 2 free generations, then continue with a paid plan whenever you need more.'},
+        {n:'4',t:'Download the result',d:'Use the generated image for renovation direction, visual reference, or designer communication.'}
       ]">
         <div class="num">{{ s.n }}</div>
         <h3 style="font-size:17px;margin-bottom:8px">{{ s.t }}</h3>
@@ -217,8 +228,8 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 
   <section class="section section-light">
     <div class="section-title">
-      <h2>适用场景与案例展示</h2>
-      <p>适用于装修前风格探索、家庭改造参考、与设计师沟通需求、软装换新前方案预览等场景。</p>
+      <h2>Use Cases</h2>
+      <p>Ideal for renovation planning, style exploration, designer communication, and furniture refresh previews.</p>
     </div>
     <div class="scene-grid">
       <div class="scene-card" v-for="c in caseStudies" :key="c.title">
@@ -233,8 +244,8 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 
   <section class="section" style="background:#f8fafc">
     <div class="section-title">
-      <h2>价格与购买方式</h2>
-      <p>用户可注册领取一次免费体验，后续按需购买点数包或开通会员。购买完成后系统自动到账生成次数，可直接在网页端继续使用。</p>
+      <h2>Pricing</h2>
+      <p>Sign up to get 2 free generations. After that, choose the plan that fits your usage. Payment adds credits automatically to your account.</p>
     </div>
     <div class="pricing-grid" style="max-width:1120px;margin:0 auto">
       <div class="plan" v-for="p in pricingPlans" :key="p.id" :class="{featured:p.featured}">
@@ -253,8 +264,8 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
     <div class="inner">
       <div class="top">
         <div>
-          <div class="brand">灵感空间AI</div>
-          <div class="copy">上传房间照片，在线生成家装效果图与风格方案。</div>
+          <div class="brand">Linggan Space AI</div>
+          <div class="copy">Upload room photos and generate AI-powered interior redesign concepts online.</div>
         </div>
       </div>
     </div>
@@ -265,34 +276,34 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 <template v-if="page==='generate'">
   <div class="container">
     <div class="step-tabs">
-      <div class="step-tab" :class="{active:step>=1}" @click="step=1">① 上传图片</div>
-      <div class="step-tab" :class="{active:step>=2}" @click="step>=2&&(step=2)">② 选择风格</div>
-      <div class="step-tab" :class="{active:step>=3}">③ 生成效果</div>
+      <div class="step-tab" :class="{active:step>=1}" @click="step=1">① Upload</div>
+      <div class="step-tab" :class="{active:step>=2}" @click="step>=2&&(step=2)">② Style</div>
+      <div class="step-tab" :class="{active:step>=3}">③ Generate</div>
     </div>
 
     <!-- Step 1: Upload -->
     <div v-if="step===1" class="card">
       <div v-if="!upload" class="upload-area" @click="$refs.fi.click()" @dragover.prevent @drop.prevent="handleFileDrop">
         <div style="font-size:40px;margin-bottom:12px">📸</div>
-        <div style="font-weight:700;margin-bottom:6px">点击或拖拽上传房间照片</div>
-        <div style="font-size:13px;color:var(--muted)">支持 JPG / PNG / HEIC / HEIF · 建议 1024×768 以上</div>
+        <div style="font-weight:700;margin-bottom:6px">Click or drag a room photo to upload</div>
+        <div style="font-size:13px;color:var(--muted)">Supports JPG / PNG / HEIC / HEIF · Recommended 1024×768 or larger</div>
         <div style="margin-top:12px">
-          <button class="btn btn-ghost" style="font-size:13px" @click.stop="useSample">使用示例图片</button>
+          <button class="btn btn-ghost" style="font-size:13px" @click.stop="useSample">Use sample room</button>
         </div>
       </div>
       <div v-else class="upload-preview">
-        <img :src="upload.previewUrl||'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'260\'><rect width=\'400\' height=\'260\' fill=\'%23e2e8f0\'/><text x=\'200\' y=\'135\' text-anchor=\'middle\' font-size=\'18\' fill=\'%2364748b\' font-family=\'sans-serif\'>示例房间</text></svg>'" alt="房间预览">
-        <span style="position:absolute;top:10px;left:10px;background:var(--g);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px">✓ 已上传</span>
-        <button style="position:absolute;top:10px;right:10px;background:#fff;border:1px solid var(--border);font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer" @click="resetGenerationState">重新选择</button>
+        <img :src="upload.previewUrl||'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'260\'><rect width=\'400\' height=\'260\' fill=\'%23e2e8f0\'/><text x=\'200\' y=\'135\' text-anchor=\'middle\' font-size=\'18\' fill=\'%2364748b\' font-family=\'sans-serif\'>Sample Room</text></svg>'" alt="Room preview">
+        <span style="position:absolute;top:10px;left:10px;background:var(--g);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px">✓ Uploaded</span>
+        <button style="position:absolute;top:10px;right:10px;background:#fff;border:1px solid var(--border);font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer" @click="resetGenerationState">Replace</button>
       </div>
       <input ref="fi" type="file" accept="image/*" style="display:none" @change="handleFileInput">
-      <div v-if="loading" style="text-align:center;padding:12px;color:var(--muted);font-size:14px">上传中...</div>
-      <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:14px;font-size:15px" :disabled="!upload||loading" @click="step=2">下一步：选择风格 →</button>
+      <div v-if="loading" style="text-align:center;padding:12px;color:var(--muted);font-size:14px">Uploading...</div>
+      <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:14px;font-size:15px" :disabled="!upload||loading" @click="step=2">Next: Choose Style →</button>
     </div>
 
     <!-- Step 2: Style -->
     <div v-if="step===2" class="card">
-      <div style="font-weight:700;margin-bottom:14px">选择装修风格</div>
+      <div style="font-weight:700;margin-bottom:14px">Choose a design style</div>
       <div class="styles-grid">
         <div class="style-card" v-for="s in styles" :key="s.key" :class="{active:selectedStyle===s.key}" @click="selectedStyle=s.key">
           <div class="style-thumb" :style="`background:${s.bg}`">{{s.icon}}</div>
@@ -300,8 +311,8 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-ghost" style="flex:1" @click="step=1">← 返回</button>
-        <button class="btn btn-primary" style="flex:2;padding:12px;font-size:15px" :disabled="!selectedStyle" @click="step=3">下一步：生成效果图 →</button>
+        <button class="btn btn-ghost" style="flex:1" @click="step=1">← Back</button>
+        <button class="btn btn-primary" style="flex:2;padding:12px;font-size:15px" :disabled="!selectedStyle" @click="step=3">Next: Generate →</button>
       </div>
     </div>
 
@@ -309,13 +320,13 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
     <div v-if="step===3" class="card">
       <div v-if="!job">
         <div style="background:#f8fafc;border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <span style="font-size:13px;color:var(--muted)">剩余点数：<strong style="color:var(--text)">{{ user?.credits||0 }} 次</strong> · 本次消耗：<strong>1次</strong></span>
-          <a style="font-size:12px;color:var(--p)" @click="modal='payment'">充值 →</a>
+          <span style="font-size:13px;color:var(--muted)">Remaining credits: <strong style="color:var(--text)">{{ user?.credits||0 }}</strong> · This generation uses <strong>1 credit</strong></span>
+          <a style="font-size:12px;color:var(--p)" @click="modal='payment'">Upgrade →</a>
         </div>
         <div style="display:flex;gap:10px">
-          <button class="btn btn-ghost" style="flex:1" @click="step=2">← 返回</button>
+          <button class="btn btn-ghost" style="flex:1" @click="step=2">← Back</button>
           <button class="btn btn-green" style="flex:2;padding:13px;font-size:16px;font-weight:800" :disabled="loading" @click="doGenerate">
-            {{ loading ? '处理中...' : '🚀 立即生成效果图' }}
+            {{ loading ? 'Processing...' : '🚀 Generate Now' }}
           </button>
         </div>
       </div>
@@ -325,32 +336,32 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
           <div class="prog-label">{{ progLabel }}</div>
           <div class="prog-bar"><div class="prog-fill" :style="`width:${progPct}%`"></div></div>
         </div>
-        <div style="text-align:center;font-size:13px;color:var(--muted);margin-top:8px">AI正在生成，请稍候（约10–30秒）</div>
+        <div style="text-align:center;font-size:13px;color:var(--muted);margin-top:8px">Your AI redesign is being generated. This usually takes 10–30 seconds.</div>
       </div>
       <!-- Done -->
       <div v-else-if="job.status==='done'">
         <div class="result-grid">
           <div class="result-item">
-            <img :src="upload?.previewUrl||'https://placehold.co/400x220/e2e8f0/94a3b8?text=原始房间'" alt="原始">
-            <span class="result-label">原始房间</span>
+            <img :src="upload?.previewUrl||'https://placehold.co/400x220/e2e8f0/94a3b8?text=Original+Room'" alt="Original">
+            <span class="result-label">Original Room</span>
           </div>
           <div class="result-item">
             <img :src="job.output_url" alt="效果图" @error="$event.target.src='https://placehold.co/400x220/ede9fe/6366f1?text=效果图生成完成'">
-            <span class="result-label" style="background:var(--g)">AI效果图</span>
+            <span class="result-label" style="background:var(--g)">AI Redesign</span>
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:14px">
-          <a class="btn btn-green" style="flex:1;text-align:center;padding:11px" :href="job.output_url" download="灵感空间AI效果图.jpg">⬇ 下载高清图</a>
-          <button class="btn btn-ghost" style="flex:1" @click="job=null;step=1">重新生成</button>
+          <a class="btn btn-green" style="flex:1;text-align:center;padding:11px" :href="job.output_url" download="linggan-space-ai-result.jpg">⬇ Download HD</a>
+          <button class="btn btn-ghost" style="flex:1" @click="job=null;step=1">Generate Again</button>
         </div>
-        <button class="btn btn-ghost" style="width:100%;margin-top:8px" @click="goHistory">查看历史记录 →</button>
+        <button class="btn btn-ghost" style="width:100%;margin-top:8px" @click="goHistory">View History →</button>
       </div>
       <!-- Failed -->
       <div v-else-if="job.status==='failed'" style="text-align:center;padding:20px">
         <div style="font-size:36px;margin-bottom:12px">⚠️</div>
-        <div style="color:#ef4444;font-weight:700;margin-bottom:8px">生成失败</div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:16px">{{ job.error || '请稍后重试' }}</div>
-        <button class="btn btn-primary" @click="job=null">重新尝试</button>
+        <div style="color:#ef4444;font-weight:700;margin-bottom:8px">Generation Failed</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px">{{ job.error || 'Please try again in a moment.' }}</div>
+        <button class="btn btn-primary" @click="job=null">Try Again</button>
       </div>
     </div>
   </div>
@@ -359,9 +370,9 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 <!-- ===== HISTORY PAGE ===== -->
 <template v-if="page==='history'">
   <div class="container">
-    <h2 style="font-size:22px;font-weight:800;margin-bottom:20px">我的生成记录</h2>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:20px">Generation History</h2>
     <div v-if="history.length===0" style="text-align:center;padding:60px;color:var(--muted)">
-      暂无记录，<a style="color:var(--p)" @click="goGenerate">开始生成</a>
+      No generations yet. <a style="color:var(--p)" @click="goGenerate">Create your first one</a>
     </div>
     <div class="history-grid">
       <div class="history-card" v-for="h in history" :key="h.id">
@@ -375,12 +386,47 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
 </template>
 
+<!-- ===== BILLING PAGE ===== -->
+<template v-if="page==='billing'">
+  <div class="container">
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">Billing History</h2>
+    <p style="color:var(--muted);margin-bottom:18px">Signed in as {{ user?.email }}</p>
+    <div v-if="billingHistory.length===0" style="text-align:center;padding:60px;color:var(--muted)">
+      No purchases yet.
+    </div>
+    <div v-else class="card" style="padding:0;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead>
+          <tr style="background:#f8fafc;text-align:left">
+            <th style="padding:14px">Order ID</th>
+            <th style="padding:14px">Plan</th>
+            <th style="padding:14px">Amount</th>
+            <th style="padding:14px">Credits</th>
+            <th style="padding:14px">Status</th>
+            <th style="padding:14px">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in billingHistory" :key="item.order_id" style="border-top:1px solid var(--border)">
+            <td style="padding:14px">{{ item.order_id }}</td>
+            <td style="padding:14px">{{ item.plan_name }}</td>
+            <td style="padding:14px">${{ Number(item.amount || 0).toFixed(2) }}</td>
+            <td style="padding:14px">{{ item.credits }}</td>
+            <td style="padding:14px">{{ item.status }}</td>
+            <td style="padding:14px">{{ (item.created_at || '').slice(0,10) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</template>
+
 <!-- ===== PRICING PAGE ===== -->
 <template v-if="page==='pricing'">
   <div class="container">
     <div style="text-align:center;margin-bottom:36px">
-      <h2 style="font-size:30px;font-weight:800;margin-bottom:8px">简单透明定价</h2>
-      <p style="color:var(--muted)">按需充值，随时可用</p>
+      <h2 style="font-size:30px;font-weight:800;margin-bottom:8px">Simple Pricing</h2>
+      <p style="color:var(--muted)">Email-based account, 2 free generations on sign-up, then upgrade anytime.</p>
     </div>
     <div class="pricing-grid">
       <div class="plan" v-for="p in pricingPlans" :key="p.id" :class="{featured:p.featured}">
@@ -400,28 +446,28 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 <div class="overlay" v-if="modal==='auth'" @click.self="modal=null">
   <div class="modal">
     <div class="tab-btns">
-      <button class="tab-btn" :class="{active:authTab==='login'}" @click="authTab='login'">登录</button>
-      <button class="tab-btn" :class="{active:authTab==='register'}" @click="authTab='register'">注册</button>
+      <button class="tab-btn" :class="{active:authTab==='login'}" @click="authTab='login'">Log in</button>
+      <button class="tab-btn" :class="{active:authTab==='register'}" @click="authTab='register'">Sign up</button>
     </div>
     <div class="field">
-      <label>手机号</label>
-      <input v-model="form.phone" type="tel" placeholder="请输入手机号" @keyup.enter="submitAuth">
+      <label>Email</label>
+      <input v-model="form.email" type="email" placeholder="Enter your email" @keyup.enter="submitAuth">
     </div>
     <div class="field">
-      <label>密码</label>
-      <input v-model="form.password" type="password" placeholder="请输入密码（6位以上）" @keyup.enter="submitAuth">
+      <label>Password</label>
+      <input v-model="form.password" type="password" placeholder="Enter your password (8+ characters)" @keyup.enter="submitAuth">
     </div>
     <div class="field" v-if="authTab==='register'">
-      <label>确认密码</label>
-      <input v-model="form.password2" type="password" placeholder="再次输入密码" @keyup.enter="submitAuth">
+      <label>Confirm password</label>
+      <input v-model="form.password2" type="password" placeholder="Enter your password again" @keyup.enter="submitAuth">
     </div>
     <button class="btn btn-primary" style="width:100%;padding:12px;font-size:15px" :disabled="loading" @click="submitAuth">
-      {{ loading ? '处理中...' : authTab==='login' ? '登录' : '注册' }}
+      {{ loading ? 'Processing...' : authTab==='login' ? 'Log in' : 'Create account' }}
     </button>
     <p v-if="authError" style="color:#ef4444;font-size:13px;margin-top:10px;text-align:center">{{ authError }}</p>
     <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:12px">
-      {{ authTab==='login' ? '没有账号？' : '已有账号？' }}
-      <a style="color:var(--p)" @click="authTab=authTab==='login'?'register':'login'">{{ authTab==='login' ? '免费注册' : '立即登录' }}</a>
+      {{ authTab==='login' ? "Don't have an account?" : 'Already have an account?' }}
+      <a style="color:var(--p)" @click="authTab=authTab==='login'?'register':'login'">{{ authTab==='login' ? 'Start free' : 'Log in now' }}</a>
     </p>
   </div>
 </div>
@@ -429,7 +475,7 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 <!-- ===== PAYMENT MODAL ===== -->
 <div class="overlay" v-if="modal==='payment'" @click.self="modal=null">
   <div class="modal">
-    <h2>充值点数</h2>
+    <h2>Choose a plan</h2>
     <div style="display:grid;gap:10px">
       <div v-for="p in chargePlans" :key="p.id" class="plan" :style="loading ? 'cursor:not-allowed;opacity:.7' : 'cursor:pointer'" @click="!loading && createOrder(p.id)">
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -438,8 +484,8 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
             <div style="font-size:13px;color:var(--muted)">{{ p.desc }}</div>
           </div>
           <div style="text-align:right">
-            <div style="font-size:22px;font-weight:800;color:var(--p)">¥{{ p.price }}</div>
-            <div style="font-size:11px;color:var(--muted)">折合¥{{ (p.price/p.credits).toFixed(1) }}/次</div>
+            <div style="font-size:22px;font-weight:800;color:var(--p)">${{ p.price }}</div>
+            <div style="font-size:11px;color:var(--muted)">${{ (p.price/p.credits).toFixed(2) }} / generation</div>
           </div>
         </div>
       </div>
@@ -450,28 +496,28 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 <!-- ===== ORDER PAY MODAL ===== -->
 <div class="overlay" v-if="modal==='order'" @click.self="closeOrderModal">
   <div class="modal" style="text-align:center">
-    <h2>安全支付</h2>
-    <div class="amount">¥{{ order?.amount }}</div>
+    <h2>Secure Checkout</h2>
+    <div class="amount">${{ order?.amount }}</div>
     <div style="font-size:14px;color:var(--muted);margin-bottom:16px">{{ order?.name }}</div>
     <div class="pay-box">
       <template v-if="order?.checkout_url">
-        <div class="pay-hint" style="margin-top:0;color:var(--p)">点击下方按钮跳转到 Creem 结账页完成支付</div>
+        <div class="pay-hint" style="margin-top:0;color:var(--p)">Use the button below to complete your checkout with Creem.</div>
         <div style="padding:18px 16px;border:1px dashed var(--border);border-radius:16px;background:#f8fafc">
           <div style="font-size:40px;margin-bottom:10px">💳</div>
-          <div class="pay-hint" style="margin:0">支付完成后会自动返回当前站点，点数到账后可继续生成。</div>
+          <div class="pay-hint" style="margin:0">After payment, you will return to this site and your generations will refresh automatically.</div>
         </div>
-        <div class="pay-hint">支持在结账页选择可用支付方式；支付完成后当前页面会自动刷新点数。</div>
+        <div class="pay-hint">Available payment methods are shown on the Creem checkout page.</div>
       </template>
       <template v-else>
         <div style="font-size:42px;margin-bottom:8px">💳</div>
-        <div class="pay-hint">正在创建结账链接…</div>
+        <div class="pay-hint">Creating your checkout link...</div>
       </template>
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-primary" style="flex:1" @click="openPayUrl()">{{ order?.checkout_url ? '前往支付' : '刷新状态' }}</button>
-        <button class="btn btn-ghost" style="flex:1" @click="closeOrderModal">取消</button>
+        <button class="btn btn-primary" style="flex:1" @click="openPayUrl()">{{ order?.checkout_url ? 'Go to checkout' : 'Refresh status' }}</button>
+        <button class="btn btn-ghost" style="flex:1" @click="closeOrderModal">Cancel</button>
       </div>
     </div>
-    <p style="font-size:12px;color:var(--muted);margin-top:8px">订单号：{{ order?.order_id }}</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">Order ID: {{ order?.order_id }}</p>
   </div>
 </div>
 
@@ -510,14 +556,14 @@ async function demoReq(path, opts={}) {
   const body = opts.body && !(opts.body instanceof FormData) ? JSON.parse(opts.body) : {};
 
   if (path.includes('/auth/register')) {
-    if (_db.users[body.phone]) throw new Error('手机号已注册');
-    _db.users[body.phone] = {password:body.password, credits:1};
-    return {token:'demo_'+body.phone, credits:1, plan:'free'};
+    if (_db.users[body.email]) throw new Error('Email already registered.');
+    _db.users[body.email] = {password:body.password, credits:2};
+    return {token:'demo_'+body.email, credits:2, plan:'free', email:body.email};
   }
   if (path.includes('/auth/login')) {
-    const u = _db.users[body.phone];
-    if (!u || u.password !== body.password) throw new Error('手机号或密码错误');
-    return {token:'demo_'+body.phone, credits:u.credits, plan:'free'};
+    const u = _db.users[body.email];
+    if (!u || u.password !== body.password) throw new Error('Invalid email or password.');
+    return {token:'demo_'+body.email, credits:u.credits, plan:'free', email:body.email};
   }
   if (path.includes('/generate/upload')) return {file_id:'demo_'+Date.now()};
   if (path.match(/\/generate\/demo_\d+$/) && opts.method==='POST') {
@@ -534,11 +580,11 @@ async function demoReq(path, opts={}) {
   }
   if (path.includes('/generate/history')) return [];
   if (path.includes('/payment/create')) {
-    const plan={c10:{price:30,name:'10次点数包',credits:10},c50:{price:99,name:'月度会员',credits:50},c200:{price:269,name:'季度会员',credits:200},c500:{price:999,name:'企业会员',credits:500}}[body.plan_id]||{price:30,name:'10次点数包',credits:10};
+    const plan={c10:{price:5.99,name:'Starter Pack',credits:13},c50:{price:19.99,name:'Monthly',credits:78},c200:{price:49.99,name:'Quarterly',credits:260},c500:{price:199.99,name:'Pro Annual',credits:2600}}[body.plan_id]||{price:5.99,name:'Starter Pack',credits:13};
     const token = (opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
-    const phone = token.startsWith('Bearer demo_') ? token.replace('Bearer demo_','') : '';
+    const email = token.startsWith('Bearer demo_') ? token.replace('Bearer demo_','') : '';
     const orderId = 'DEMO'+Date.now();
-    _db.orders[orderId] = { phone, credits: plan.credits, status: 'pending', amount: plan.price, name: plan.name };
+    _db.orders[orderId] = { email, credits: plan.credits, status: 'pending', amount: plan.price, name: plan.name };
     return {
       order_id: orderId,
       amount: plan.price,
@@ -557,11 +603,11 @@ async function demoReq(path, opts={}) {
     if (!order) throw new Error('订单不存在');
     if (order.status !== 'paid') {
       order.status = 'paid';
-      if (order.phone && _db.users[order.phone]) {
-        _db.users[order.phone].credits += order.credits;
+      if (order.email && _db.users[order.email]) {
+        _db.users[order.email].credits += order.credits;
       }
     }
-    return {status:'paid', credits:_db.users[order.phone]?.credits || order.credits};
+    return {status:'paid', credits:_db.users[order.email]?.credits || order.credits};
   }
   if (path.includes('/payment/order/')) {
     const orderId = path.split('/').pop();
@@ -577,6 +623,17 @@ async function demoReq(path, opts={}) {
       pay_method: 'checkout_redirect',
       provider: 'creem'
     };
+  }
+  if (path.includes('/admin/dashboard')) {
+    return {
+      summary: { total_users: Object.keys(_db.users).length, total_orders: Object.keys(_db.orders).length, paid_orders: Object.values(_db.orders).filter(o => o.status === 'paid').length, total_revenue: Object.values(_db.orders).filter(o => o.status === 'paid').reduce((sum, o) => sum + Number(o.amount || 0), 0), total_credits: Object.values(_db.users).reduce((sum, u) => sum + Number(u.credits || 0), 0) },
+      users: Object.entries(_db.users).map(([email, u], idx) => ({ id: idx + 1, email, credits: u.credits, plan: 'free', created_at: new Date().toISOString(), last_login_at: new Date().toISOString() })),
+      orders: Object.entries(_db.orders).map(([order_id, o]) => ({ order_id, plan_id: 'c10', plan_name: o.name, amount: o.amount, credits: o.credits, status: o.status, created_at: new Date().toISOString(), provider: 'creem', trade_no: null }))
+    };
+  }
+  if (path.includes('/admin/users/credits')) {
+    if (_db.users[body.email]) _db.users[body.email].credits = body.credits;
+    return { ok: true };
   }
   return {};
 }
@@ -601,12 +658,12 @@ async function req(path, opts={}) {
           window._vueApp.loading = false;
           await window._vueApp.tryAutoLogin();
           if (!window._vueApp.user) {
-            window._vueApp.authError = '登录状态已失效，请重新登录';
+            window._vueApp.authError = 'Your session has expired. Please log in again.';
             window._vueApp.authTab = 'login';
             window._vueApp.modal = 'auth';
           }
         }
-        throw new Error('登录状态已失效，请重新登录');
+        throw new Error('Your session has expired. Please log in again.');
       }
       throw new Error(e.detail||'请求失败');
     }
@@ -630,13 +687,14 @@ const app = createApp({
       modal: null,
       authTab: 'login',
       authError: '',
-      form: { phone: '', password: '', password2: '' },
+      form: { email: '', password: '', password2: '' },
       step: 1,
       upload: null,       // {previewUrl, fileId}
       sampleUpload: null,
       selectedStyle: null,
       job: null,          // {job_id, status, output_url, error}
       history: [],
+      billingHistory: [],
       order: null,
       orderPollingToken: 0,
       loading: false,
@@ -644,38 +702,39 @@ const app = createApp({
       toastMsg: '',
       toastType: 'success',
       progPct: 0,
-      progLabel: '正在分析空间结构...',
+      progLabel: 'Analyzing room structure...',
       styles: [
-        {key:'modern',   name:'现代简约', icon:'🪑', bg:'linear-gradient(135deg,#f1f5f9,#e2e8f0)'},
-        {key:'nordic',   name:'北欧风格', icon:'🌿', bg:'linear-gradient(135deg,#fef9ee,#fde68a)'},
-        {key:'chinese',  name:'新中式',   icon:'🏮', bg:'linear-gradient(135deg,#fff7ed,#fed7aa)'},
-        {key:'luxury',   name:'轻奢风',   icon:'💎', bg:'linear-gradient(135deg,#fdf4ff,#e9d5ff)'},
-        {key:'industrial',name:'工业风',  icon:'🔩', bg:'linear-gradient(135deg,#f1f5f9,#cbd5e1)'},
-        {key:'american', name:'美式乡村', icon:'🌻', bg:'linear-gradient(135deg,#f0fdf4,#bbf7d0)'},
-        {key:'cream',    name:'奶油风',   icon:'🍦', bg:'linear-gradient(135deg,#fff7ed,#fde7d3)'},
-        {key:'wabisabi', name:'侘寂风',   icon:'🪨', bg:'linear-gradient(135deg,#f5f5f4,#d6d3d1)'},
-        {key:'wood',     name:'原木风',   icon:'🪵', bg:'linear-gradient(135deg,#fef3c7,#d6ad60)'},
-        {key:'french',   name:'现代法式', icon:'🕯️', bg:'linear-gradient(135deg,#fff1f2,#fecdd3)'},
-        {key:'midcentury', name:'中古风', icon:'🛋️', bg:'linear-gradient(135deg,#f5f5dc,#c4a484)'},
-        {key:'minimal',  name:'极简风',   icon:'⬜', bg:'linear-gradient(135deg,#f8fafc,#e5e7eb)'},
+        {key:'modern',   name:'Modern Minimalist', icon:'🪑', bg:'linear-gradient(135deg,#f1f5f9,#e2e8f0)'},
+        {key:'nordic',   name:'Scandinavian', icon:'🌿', bg:'linear-gradient(135deg,#fef9ee,#fde68a)'},
+        {key:'chinese',  name:'New Chinese',   icon:'🏮', bg:'linear-gradient(135deg,#fff7ed,#fed7aa)'},
+        {key:'luxury',   name:'Light Luxury',   icon:'💎', bg:'linear-gradient(135deg,#fdf4ff,#e9d5ff)'},
+        {key:'industrial',name:'Industrial',  icon:'🔩', bg:'linear-gradient(135deg,#f1f5f9,#cbd5e1)'},
+        {key:'american', name:'American Classic', icon:'🌻', bg:'linear-gradient(135deg,#f0fdf4,#bbf7d0)'},
+        {key:'cream',    name:'Cream',   icon:'🍦', bg:'linear-gradient(135deg,#fff7ed,#fde7d3)'},
+        {key:'wabisabi', name:'Wabi-Sabi',   icon:'🪨', bg:'linear-gradient(135deg,#f5f5f4,#d6d3d1)'},
+        {key:'wood',     name:'Natural Wood',   icon:'🪵', bg:'linear-gradient(135deg,#fef3c7,#d6ad60)'},
+        {key:'french',   name:'Modern French', icon:'🕯️', bg:'linear-gradient(135deg,#fff1f2,#fecdd3)'},
+        {key:'midcentury', name:'Mid-Century', icon:'🛋️', bg:'linear-gradient(135deg,#f5f5dc,#c4a484)'},
+        {key:'minimal',  name:'Minimalist',   icon:'⬜', bg:'linear-gradient(135deg,#f8fafc,#e5e7eb)'},
       ],
       chargePlans: [
-        {id:'c10',  name:'10次点数包',  desc:'适合偶尔使用',    price:30,  credits:10},
-        {id:'c50',  name:'月度会员',    desc:'每月50次，最划算',price:99,  credits:50},
-        {id:'c200', name:'季度会员',    desc:'每季200次，适合持续装修参考',price:269,credits:200},
-        {id:'c500', name:'企业会员',    desc:'每月500次，适合高频使用',price:999,credits:500},
+        {id:'c10',  name:'Starter Pack',  desc:'Perfect for first-time users',    price:5.99,  credits:13},
+        {id:'c50',  name:'Monthly',    desc:'Best for active home projects',price:19.99,  credits:78},
+        {id:'c200', name:'Quarterly',    desc:'Built for ongoing design work',price:49.99,credits:260},
+        {id:'c500', name:'Pro Annual',    desc:'For professionals and heavy users',price:199.99,credits:2600},
       ],
       pricingPlans: [
-        {id:'c10',  name:'按量充值',   price:'¥30', unit:'10次', desc:'随买随用，无月费',  features:['10次生成额度','高清输出','下载无水印'], cta:'立即充值', featured:false},
-        {id:'c50',  name:'月度会员',   price:'¥99', unit:'月',   desc:'每月50次，折合¥2/次',features:['50次/月','2K高清优先','历史记录6个月'], cta:'开通会员', featured:true},
-        {id:'c200', name:'季度会员',   price:'¥269',unit:'季',   desc:'每季200次，适合持续比稿与多空间设计', features:['200次/季','2K高清优先','历史记录9个月','多空间连续生成'], cta:'开通会员', featured:false},
-        {id:'c500', name:'企业会员',   price:'¥999',unit:'月',   desc:'每月500次，适合高频团队使用', features:['500次/月','高清优先生成','历史记录12个月','优先支持服务'], cta:'开通会员', featured:false},
+        {id:'free', name:'Free Trial', price:'$0', unit:'one-time', desc:'2 free generations when you sign up', features:['2 generations','Email account','Basic history'], cta:'Start free', featured:false},
+        {id:'c10',  name:'Starter Pack',   price:'$5.99', unit:'one-time', desc:'Start small and upgrade anytime',  features:['13 generations','High-resolution output','Watermark-free downloads'], cta:'Buy now', featured:false},
+        {id:'c50',  name:'Monthly',   price:'$19.99', unit:'month',   desc:'Best for active renovation projects',features:['78 generations / month','Priority rendering','Billing history'], cta:'Subscribe', featured:true},
+        {id:'c200', name:'Quarterly',   price:'$49.99',unit:'quarter',   desc:'Better value for longer projects', features:['260 generations / quarter','Priority rendering','Longer billing history','Multi-room workflow'], cta:'Subscribe', featured:false},
+        {id:'c500', name:'Pro Annual',   price:'$199.99',unit:'year',   desc:'Built for power users and professionals', features:['2600 generations / year','Priority access','Extended usage capacity','Team-ready volume'], cta:'Subscribe', featured:false},
       ],
       caseStudies: [
-        {title:'客厅焕新方案', desc:'保留原始采光与窗位，快速对比现代简约、奶油风与轻奢风的落地视觉差异。', image:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=900&auto=format&fit=crop'},
-        {title:'卧室布局参考', desc:'基于床位、过道和柜体位置输出更贴近原房间结构的卧室改造效果图。', image:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=900&auto=format&fit=crop&sat=-20'},
-        {title:'餐厅与开放区', desc:'适合装修前确认餐边柜、灯光氛围和整体色系，帮助家庭成员统一风格方向。', image:'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=900&auto=format&fit=crop'},
-        {title:'书房与次卧改造', desc:'用于小空间重构与功能优化，适合书房、儿童房、次卧等多种家装场景。', image:'https://images.unsplash.com/photo-1494526585095-c41746248156?w=900&auto=format&fit=crop'},
+        {title:'Living room concept', desc:'Compare modern, cream, and luxury directions while keeping the original layout and lighting.', image:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=900&auto=format&fit=crop'},
+        {title:'Bedroom redesign', desc:'Generate bedroom concepts that stay closer to the original bed wall, walkway, and cabinet placement.', image:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=900&auto=format&fit=crop&sat=-20'},
+        {title:'Dining area preview', desc:'Explore cabinet layout, lighting mood, and palette direction before starting a full renovation.', image:'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=900&auto=format&fit=crop'},
+        {title:'Study or guest room update', desc:'Useful for tighter layouts where storage, desk placement, and flexibility matter most.', image:'https://images.unsplash.com/photo-1494526585095-c41746248156?w=900&auto=format&fit=crop'},
       ],
     }
   },
@@ -704,7 +763,7 @@ const app = createApp({
         version: ORDER_STORAGE_VERSION,
         order_id: this.order.order_id,
         amount: this.order.amount || '',
-        name: this.order.name || '安全支付',
+        name: this.order.name || 'Secure Checkout',
         pay_url: this.order.pay_url || '',
         checkout_url: this.order.checkout_url || '',
         provider: this.order.provider || 'creem',
@@ -727,15 +786,15 @@ const app = createApp({
     cancelPaymentPolling() {
       this.orderPollingToken += 1;
     },
-    saveAccount(phone, password) {
-      localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify({ phone, password }));
+    saveAccount(email, password) {
+      localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify({ email, password }));
     },
     restoreSavedAccount() {
       try {
         const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
         if (!raw) return;
         const saved = JSON.parse(raw);
-        if (saved?.phone && !this.form.phone) this.form.phone = saved.phone;
+        if (saved?.email && !this.form.email) this.form.email = saved.email;
       } catch {}
     },
     async tryAutoLogin() {
@@ -747,7 +806,7 @@ const app = createApp({
           return;
         }
         const saved = JSON.parse(raw);
-        if (!saved?.phone || !saved?.password) {
+        if (!saved?.email || !saved?.password) {
           this.user = null;
           localStorage.removeItem('lkj_user');
           return;
@@ -756,7 +815,7 @@ const app = createApp({
         try {
           d = await req('/api/auth/login', {
             method:'POST',
-            body:JSON.stringify({ phone:saved.phone, password:saved.password }),
+            body:JSON.stringify({ email:saved.email, password:saved.password }),
             headers:{}
           });
         } catch {
@@ -766,7 +825,7 @@ const app = createApp({
           return;
         }
         localStorage.setItem('lkj_token', d.token);
-        this.user = { phone:saved.phone, credits:d.credits, plan:d.plan || 'free' };
+        this.user = { email:saved.email, credits:d.credits, plan:d.plan || 'free' };
         localStorage.setItem('lkj_user', JSON.stringify(this.user));
         await this.refreshCurrentUser();
       } catch {
@@ -784,7 +843,7 @@ const app = createApp({
     async refreshCurrentUser() {
       try {
         const me = await req('/api/auth/me');
-        this.user = { phone: me.phone, credits: me.credits, plan: me.plan || 'free' };
+        this.user = { email: me.email, credits: me.credits, plan: me.plan || 'free' };
         localStorage.setItem('lkj_user', JSON.stringify(this.user));
       } catch (e) {
         const token = localStorage.getItem('lkj_token');
@@ -811,33 +870,39 @@ const app = createApp({
         this.clearPendingOrder();
       }
     },
+    async goBilling() {
+      if (!this.user) { this.openAuth('login'); return; }
+      await this.syncCurrentUser();
+      this.page='billing';
+      try { this.billingHistory = await req('/api/billing/history'); } catch { this.billingHistory = []; }
+    },
     openAuth(tab) { this.authTab=tab; this.authError=''; this.modal='auth'; },
     async submitAuth() {
-      if (!this.form.phone || !this.form.password) { this.authError='请填写手机号和密码'; return; }
+      if (!this.form.email || !this.form.password) { this.authError='Please enter your email and password.'; return; }
       if (this.authTab==='register') {
-        if (this.form.password.length < 6) { this.authError='密码至少6位'; return; }
-        if (this.form.password !== this.form.password2) { this.authError='两次密码输入不一致'; return; }
+        if (this.form.password.length < 8) { this.authError='Password must be at least 8 characters.'; return; }
+        if (this.form.password !== this.form.password2) { this.authError='Passwords do not match.'; return; }
       }
       this.loading=true; this.authError='';
       try {
-        const d = await req(`/api/auth/${this.authTab}`, {method:'POST', body:JSON.stringify({phone:this.form.phone,password:this.form.password})});
+        const d = await req(`/api/auth/${this.authTab}`, {method:'POST', body:JSON.stringify({email:this.form.email,password:this.form.password})});
         localStorage.setItem('lkj_token', d.token);
-        this.user = {phone:this.form.phone, credits:d.credits, plan:d.plan||'free'};
+        this.user = {email:this.form.email, credits:d.credits, plan:d.plan||'free'};
         localStorage.setItem('lkj_user', JSON.stringify(this.user));
-        this.saveAccount(this.form.phone, this.form.password);
+        this.saveAccount(this.form.email, this.form.password);
         await this.refreshCurrentUser();
         this.modal=null;
-        this.toast(this.authTab==='register'?'注册成功':'登录成功');
+        this.toast(this.authTab==='register'?'Account created successfully':'Logged in successfully');
         this.page='generate';
       } catch(e) {
-        this.authError = (e.message==='Failed to fetch'||e.message.includes('Load failed')) ? '无法连接服务器，请确认后端已启动' : e.message;
+        this.authError = (e.message==='Failed to fetch'||e.message.includes('Load failed')) ? 'Unable to reach the server. Please make sure the backend is running.' : e.message;
       }
       finally { this.loading=false; }
     },
     logout() {
       req('/api/auth/logout', { method:'POST' }).catch(()=>{});
       localStorage.removeItem('lkj_token'); localStorage.removeItem('lkj_user'); localStorage.removeItem(ACCOUNT_STORAGE_KEY);
-      this.user=null; this.page='home'; this.toast('已退出登录');
+      this.user=null; this.page='home'; this.toast('You have been logged out.');
     },
     async goGenerate() {
       if (!this.user || !localStorage.getItem('lkj_token')) {
@@ -878,7 +943,7 @@ const app = createApp({
       const isImageByType = (file.type || '').startsWith('image/');
       const isImageByExt = /\.(jpg|jpeg|png|webp|heic|heif)$/i.test(name);
       if (!isImageByType && !isImageByExt) {
-        this.toast('请上传 JPG、PNG、HEIC 或 HEIF 图片', 'error');
+        this.toast('Please upload a JPG, PNG, HEIC, or HEIF image.', 'error');
         return;
       }
       if (!this.user || !localStorage.getItem('lkj_token')) {
@@ -887,14 +952,14 @@ const app = createApp({
       }
       this.job = null;
       this.progPct = 0;
-      this.progLabel = '正在分析空间结构...';
+      this.progLabel = 'Analyzing room structure...';
       this.upload = {previewUrl: URL.createObjectURL(file), fileId:null};
       this.loading=true;
       try {
         const fd=new FormData(); fd.append('file',file);
         const d = await req('/api/generate/upload', {method:'POST', body:fd});
         this.upload.fileId = d.file_id;
-        this.toast('图片上传成功');
+        this.toast('Image uploaded successfully.');
       } catch(e) { this.toast(e.message,'error'); this.upload=null; }
       finally { this.loading=false; }
     },
@@ -902,25 +967,25 @@ const app = createApp({
       if (!this.user) { this.openAuth('register'); return; }
       this.job = null;
       this.progPct = 0;
-      this.progLabel = '正在分析空间结构...';
+      this.progLabel = 'Analyzing room structure...';
       if (!this.sampleUpload) {
-        this.toast('示例图不存在，请直接上传本地图片', 'error');
+        this.toast('Sample image is unavailable. Please upload your own room photo.', 'error');
         return;
       }
       this.upload = {...this.sampleUpload};
-      this.toast('已加载示例房间');
+      this.toast('Sample room loaded.');
     },
     resetGenerationState() {
       this.upload = null;
       this.job = null;
       this.progPct = 0;
-      this.progLabel = '正在分析空间结构...';
+      this.progLabel = 'Analyzing room structure...';
       if (this.$refs.fi) this.$refs.fi.value = '';
     },
     async doGenerate() {
       if (!this.user) { this.openAuth('register'); return; }
-      if (!this.upload?.fileId) { this.toast('请先上传房间原图','error'); return; }
-      if (!this.selectedStyle) { this.toast('请先选择装修风格','error'); return; }
+      if (!this.upload?.fileId) { this.toast('Please upload a room photo first.','error'); return; }
+      if (!this.selectedStyle) { this.toast('Please choose a design style first.','error'); return; }
       await this.syncCurrentUser();
       if ((this.user.credits||0) < 1) { this.modal='payment'; return; }
       this.loading=true; this.job={status:'processing'};
@@ -933,13 +998,13 @@ const app = createApp({
         if (this.job.status==='done') {
           this.user.credits = Math.max(0,(this.user.credits||0)-1);
           localStorage.setItem('lkj_user', JSON.stringify(this.user));
-          this.toast('效果图生成完成 🎉');
+          this.toast('Your redesign is ready 🎉');
         }
       } catch(e) { this.toast(e.message,'error'); this.job={status:'failed',error:e.message}; }
       finally { this.loading=false; this.stopProgAnim(); }
     },
     async pollJob(jobId) {
-      const labels=['正在分析空间结构...','提取房型特征...','应用风格迁移...','高清渲染中...','输出效果图...'];
+      const labels=['Analyzing room structure...','Reading layout features...','Applying style transfer...','Rendering high-res output...','Preparing final image...'];
       let i=0;
       let attempts = 0;
       while(attempts < 60) {
@@ -952,12 +1017,12 @@ const app = createApp({
         } catch(e) { this.job={status:'failed',error:e.message}; break; }
       }
       if (attempts >= 60 && this.job?.status !== 'done' && this.job?.status !== 'failed') {
-        this.job = {status:'failed', error:'生成超时，请重试一次。如仍失败，请更换图片或稍后再试。'};
+        this.job = {status:'failed', error:'Generation timed out. Please try again. If it still fails, use a different image or try later.'};
       }
     },
     _progTimer: null,
     startProgAnim() {
-      this.progPct=0; this.progLabel='正在分析空间结构...';
+      this.progPct=0; this.progLabel='Analyzing room structure...';
       this._progTimer=setInterval(()=>{ if(this.progPct<85) this.progPct+=Math.random()*3; },500);
     },
     stopProgAnim() { clearInterval(this._progTimer); },
@@ -1003,7 +1068,7 @@ const app = createApp({
       this.modal = 'order';
       this.order = this.normalizeOrderPayload({ order_id: orderId }, {
         amount: '',
-        name: '安全支付',
+        name: 'Secure Checkout',
         pay_url: '',
         checkout_url: '',
         provider: 'creem',
@@ -1038,7 +1103,7 @@ const app = createApp({
         this.modal = null;
         this.order = null;
         this.clearPendingOrder();
-        this.toast(`充值成功！当前余额 ${d.credits} 次`);
+        this.toast(`Payment successful. Your balance is now ${d.credits} credits.`);
         return true;
       }
       return false;

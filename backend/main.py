@@ -50,9 +50,16 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 ROOT_DIR = Path(__file__).resolve().parent.parent
 BUNDLED_UPLOAD_ROOT = Path(__file__).resolve().parent / "uploads"
 INDEX_HTML = ROOT_DIR / "index.html"
-TEST_ACCOUNT_PHONE = "15251872890"
+TEST_ACCOUNT_EMAIL = "test@lingganspace.work"
 TEST_ACCOUNT_MIN_CREDITS = 500
-app = FastAPI(title="灵感空间AI")
+APP_ENV = os.getenv("APP_ENV", os.getenv("ENV", "development")).strip().lower()
+IS_PRODUCTION = APP_ENV in {"production", "prod"}
+app = FastAPI(
+    title="灵感空间AI",
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url="/openapi.json",
+)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 def _seed_bundled_uploads() -> None:
@@ -83,6 +90,7 @@ ORDER_EXTRA_COLUMNS = {
     "provider_request_id": "TEXT",
     "provider_customer_email": "TEXT",
     "paid_at": "TEXT",
+    "admin_note": "TEXT",
 }
 
 # ─── DB ───────────────────────────────────────────────
@@ -109,16 +117,70 @@ def _ensure_orders_schema(db) -> None:
             db.execute(f"ALTER TABLE orders ADD COLUMN {name} {spec}")
     db.commit()
 
+def _ensure_aux_tables(db) -> None:
+    if USING_POSTGRES:
+        cur = db.cursor()
+        cur.execute("""CREATE TABLE IF NOT EXISTS auth_logs(
+            id TEXT PRIMARY KEY,
+            user_id INTEGER,
+            email TEXT,
+            event TEXT,
+            ip TEXT,
+            user_agent TEXT,
+            created_at TEXT
+        )""")
+        cur.execute("""CREATE TABLE IF NOT EXISTS credit_logs(
+            id TEXT PRIMARY KEY,
+            user_id INTEGER,
+            email TEXT,
+            change_amount INTEGER,
+            before_credits INTEGER,
+            after_credits INTEGER,
+            action TEXT,
+            reason TEXT,
+            operator TEXT,
+            related_order_id TEXT,
+            created_at TEXT
+        )""")
+        db.commit()
+        return
+
+    db.execute("""CREATE TABLE IF NOT EXISTS auth_logs(
+        id TEXT PRIMARY KEY,
+        user_id INTEGER,
+        email TEXT,
+        event TEXT,
+        ip TEXT,
+        user_agent TEXT,
+        created_at TEXT
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS credit_logs(
+        id TEXT PRIMARY KEY,
+        user_id INTEGER,
+        email TEXT,
+        change_amount INTEGER,
+        before_credits INTEGER,
+        after_credits INTEGER,
+        action TEXT,
+        reason TEXT,
+        operator TEXT,
+        related_order_id TEXT,
+        created_at TEXT
+    )""")
+    db.commit()
+
 def get_db():
     if USING_POSTGRES:
         conn = psycopg.connect(DATABASE_URL, **_pg_conn_kwargs())
         cur = conn.cursor()
         cur.execute("""CREATE TABLE IF NOT EXISTS users(
             id SERIAL PRIMARY KEY,
-            phone TEXT UNIQUE,
+            email TEXT UNIQUE,
             password TEXT,
             credits INTEGER DEFAULT 0,
-            plan TEXT DEFAULT 'free'
+            plan TEXT DEFAULT 'free',
+            created_at TEXT,
+            last_login_at TEXT
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS jobs(
             id TEXT PRIMARY KEY,
@@ -145,17 +207,20 @@ def get_db():
             provider_checkout_url TEXT,
             provider_request_id TEXT,
             provider_customer_email TEXT,
-            paid_at TEXT
+            paid_at TEXT,
+            admin_note TEXT
         )""")
         conn.commit()
         _ensure_orders_schema(conn)
+        _ensure_aux_tables(conn)
         return conn
 
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        phone TEXT UNIQUE, password TEXT,
-        credits INTEGER DEFAULT 0, plan TEXT DEFAULT 'free')""")
+        email TEXT UNIQUE, password TEXT,
+        credits INTEGER DEFAULT 0, plan TEXT DEFAULT 'free',
+        created_at TEXT, last_login_at TEXT)""")
     conn.execute("""CREATE TABLE IF NOT EXISTS jobs(
         id TEXT PRIMARY KEY, user_id INTEGER, style TEXT,
         input_path TEXT, output_url TEXT,
@@ -165,9 +230,10 @@ def get_db():
         amount INTEGER, credits INTEGER, status TEXT DEFAULT 'pending', created_at TEXT,
         provider TEXT DEFAULT 'creem', provider_checkout_id TEXT, provider_order_id TEXT,
         provider_product_id TEXT, provider_checkout_url TEXT, provider_request_id TEXT,
-        provider_customer_email TEXT, paid_at TEXT)""")
+        provider_customer_email TEXT, paid_at TEXT, admin_note TEXT)""")
     conn.commit()
     _ensure_orders_schema(conn)
+    _ensure_aux_tables(conn)
     return conn
 
 def db_execute(db, sql: str, params=()):
@@ -178,18 +244,75 @@ def db_begin_immediate(db):
         return
     db.execute("BEGIN IMMEDIATE")
 
-def _ensure_test_account_credits(db, phone: str) -> int | None:
-    if phone != TEST_ACCOUNT_PHONE:
+def _ensure_test_account_credits(db, email: str) -> int | None:
+    if email != TEST_ACCOUNT_EMAIL:
         return None
-    row = db_execute(db, "SELECT credits FROM users WHERE phone=%s", (phone,)).fetchone()
+    row = db_execute(db, "SELECT credits FROM users WHERE email=%s", (email,)).fetchone()
     if not row:
         return None
     credits = int(row[0] or 0)
     if credits < TEST_ACCOUNT_MIN_CREDITS:
-        db_execute(db, "UPDATE users SET credits=%s WHERE phone=%s", (TEST_ACCOUNT_MIN_CREDITS, phone))
+        db_execute(db, "UPDATE users SET credits=%s WHERE email=%s", (TEST_ACCOUNT_MIN_CREDITS, email))
         db.commit()
         return TEST_ACCOUNT_MIN_CREDITS
     return credits
+
+def _request_ip(request: Request | None) -> str:
+    if not request:
+        return ""
+    forwarded = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if forwarded:
+        return forwarded
+    return request.client.host if request.client else ""
+
+def _log_auth_event(db, user_id: int, email: str, event: str, request: Request | None = None):
+    db_execute(
+        db,
+        """INSERT INTO auth_logs(id,user_id,email,event,ip,user_agent,created_at)
+           VALUES(%s,%s,%s,%s,%s,%s,%s)""",
+        (
+            str(uuid.uuid4()),
+            user_id,
+            email,
+            event,
+            _request_ip(request),
+            (request.headers.get("user-agent", "") if request else "")[:500],
+            datetime.utcnow().isoformat(),
+        ),
+    )
+
+def _log_credit_event(
+    db,
+    *,
+    user_id: int,
+    email: str,
+    change_amount: int,
+    before_credits: int,
+    after_credits: int,
+    action: str,
+    reason: str = "",
+    operator: str = "system",
+    related_order_id: str | None = None,
+):
+    db_execute(
+        db,
+        """INSERT INTO credit_logs
+           (id,user_id,email,change_amount,before_credits,after_credits,action,reason,operator,related_order_id,created_at)
+           VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+        (
+            str(uuid.uuid4()),
+            user_id,
+            email,
+            change_amount,
+            before_credits,
+            after_credits,
+            action,
+            reason,
+            operator,
+            related_order_id,
+            datetime.utcnow().isoformat(),
+        ),
+    )
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -260,11 +383,18 @@ def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: s
     db = get_db()
     try:
         db_begin_immediate(db)
-        row = db_execute(db, "SELECT user_id, credits, status, amount FROM orders WHERE id=%s", (order_id,)).fetchone()
+        row = db_execute(
+            db,
+            """SELECT o.user_id, o.credits, o.status, o.amount, u.email, u.credits
+               FROM orders o
+               LEFT JOIN users u ON u.id=o.user_id
+               WHERE o.id=%s""",
+            (order_id,),
+        ).fetchone()
         if not row:
             db.rollback()
             return False
-        user_id, credits, status, amount = row
+        user_id, credits, status, amount, email, before_credits = row
         if status == "paid":
             db.rollback()
             return True
@@ -284,6 +414,18 @@ def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: s
             (trade_no, datetime.utcnow().isoformat(), order_id),
         )
         db_execute(db, "UPDATE users SET credits=credits+%s WHERE id=%s", (credits, user_id))
+        _log_credit_event(
+            db,
+            user_id=user_id,
+            email=email or "",
+            change_amount=int(credits or 0),
+            before_credits=int(before_credits or 0),
+            after_credits=int(before_credits or 0) + int(credits or 0),
+            action="payment_credit",
+            reason="支付成功到账",
+            operator="system",
+            related_order_id=order_id,
+        )
         db.commit()
         return True
     except Exception:
@@ -307,8 +449,8 @@ async def _creem_create_checkout(order_id: str, user: tuple, plan_id: str, plan:
     if not product_id:
         raise HTTPException(503, f"Creem 商品未配置：{plan_id}")
 
-    user_id, phone = user[0], user[1]
-    customer_email = f"{phone}@lingganspace.work"
+    user_id, email = user[0], user[1]
+    customer_email = email
     payload = {
         "product_id": product_id,
         "request_id": order_id,
@@ -322,7 +464,7 @@ async def _creem_create_checkout(order_id: str, user: tuple, plan_id: str, plan:
             "user_id": str(user_id),
             "plan_id": plan_id,
             "credits": str(plan["credits"]),
-            "phone": phone,
+            "email": email,
         },
     }
     async with httpx.AsyncClient(timeout=60) as client:
@@ -378,7 +520,7 @@ async def _build_order_payment_payload(order_id: str, plan: dict, force_refresh:
         else str(product_obj or "")
     ) or _creem_plan_product_id(plan_id)
     customer = checkout.get("customer") or {}
-    customer_email = customer.get("email") or f"{user_row[1]}@lingganspace.work"
+    customer_email = customer.get("email") or user_row[1]
     db_execute(
         db,
         """UPDATE orders
@@ -433,54 +575,91 @@ def current_uid(request: Request, cred: HTTPAuthorizationCredentials = Depends(s
         elif request.cookies.get("lkj_token"):
             token = request.cookies.get("lkj_token")
         if not token:
-            raise HTTPException(401, "未登录")
+            raise HTTPException(401, "Not authenticated.")
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         sub = payload.get("sub")
         if sub is None:
-            raise HTTPException(401, "Token 无效")
+            raise HTTPException(401, "Invalid token.")
         return int(sub)
     except Exception:
-        raise HTTPException(401, "Token 无效")
+        raise HTTPException(401, "Invalid token.")
 
 def _require_user_row(db, uid):
-    row = db_execute(db, "SELECT id,phone,credits,plan FROM users WHERE id=%s", (uid,)).fetchone()
+    row = db_execute(db, "SELECT id,email,credits,plan FROM users WHERE id=%s", (uid,)).fetchone()
     if not row:
-        raise HTTPException(401, "账号不存在，请重新登录")
+        raise HTTPException(401, "Account not found. Please log in again.")
     return row
+
+def _require_admin(request: Request):
+    admin_key = os.getenv("ADMIN_KEY", "").strip()
+    if not admin_key:
+        raise HTTPException(503, "Admin key is not configured.")
+    supplied = request.headers.get("x-admin-key", "").strip()
+    if supplied != admin_key:
+        raise HTTPException(401, "Admin access denied.")
+    return True
 
 # ─── AUTH ─────────────────────────────────────────────
 class AuthReq(BaseModel):
-    phone: str; password: str
+    email: str
+    password: str
 
 @app.post("/api/auth/register")
-def register(r: AuthReq, response: Response):
+def register(r: AuthReq, response: Response, request: Request):
+    if len(r.password or "") < 8:
+        raise HTTPException(400, "Password must be at least 8 characters.")
     hashed = bcrypt.hashpw(r.password.encode(), bcrypt.gensalt()).decode()
     db = get_db()
-    initial_credits = TEST_ACCOUNT_MIN_CREDITS if r.phone == TEST_ACCOUNT_PHONE else 1
+    email = r.email.strip().lower()
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        raise HTTPException(400, "Please enter a valid email address.")
+    initial_credits = TEST_ACCOUNT_MIN_CREDITS if email == TEST_ACCOUNT_EMAIL else 2
     try:
-        db_execute(db, "INSERT INTO users(phone,password,credits,plan) VALUES(%s,%s,%s,%s)", (r.phone, hashed, initial_credits, "free"))
+        now = datetime.utcnow().isoformat()
+        db_execute(
+            db,
+            "INSERT INTO users(email,password,credits,plan,created_at,last_login_at) VALUES(%s,%s,%s,%s,%s,%s)",
+            (email, hashed, initial_credits, "free", now, now),
+        )
         db.commit()
-        uid = db_execute(db, "SELECT id FROM users WHERE phone=%s", (r.phone,)).fetchone()[0]
+        uid = db_execute(db, "SELECT id FROM users WHERE email=%s", (email,)).fetchone()[0]
+        _log_auth_event(db, uid, email, "register", request)
+        _log_credit_event(
+            db,
+            user_id=uid,
+            email=email,
+            change_amount=initial_credits,
+            before_credits=0,
+            after_credits=initial_credits,
+            action="signup_bonus",
+            reason="新用户注册赠送次数",
+            operator="system",
+        )
+        db.commit()
         token = _build_auth_token(uid)
         _set_auth_cookie(response, token)
-        return {"token": token, "credits": initial_credits, "plan": "free"}
+        return {"token": token, "credits": initial_credits, "plan": "free", "email": email}
     except (sqlite3.IntegrityError, psycopg.errors.UniqueViolation):
         try:
             db.rollback()
         except Exception:
             pass
-        raise HTTPException(400, "手机号已注册")
+        raise HTTPException(400, "Email already registered.")
 
 @app.post("/api/auth/login")
-def login(r: AuthReq, response: Response):
+def login(r: AuthReq, response: Response, request: Request):
     db = get_db()
-    row = db_execute(db, "SELECT id,password,credits,plan FROM users WHERE phone=%s", (r.phone,)).fetchone()
+    email = r.email.strip().lower()
+    row = db_execute(db, "SELECT id,password,credits,plan FROM users WHERE email=%s", (email,)).fetchone()
     if not row or not bcrypt.checkpw(r.password.encode(), row[1].encode()):
-        raise HTTPException(401, "手机号或密码错误")
-    credits = _ensure_test_account_credits(db, r.phone)
+        raise HTTPException(401, "Invalid email or password.")
+    credits = _ensure_test_account_credits(db, email)
+    db_execute(db, "UPDATE users SET last_login_at=%s WHERE id=%s", (datetime.utcnow().isoformat(), row[0]))
+    _log_auth_event(db, row[0], email, "login", request)
+    db.commit()
     token = _build_auth_token(row[0])
     _set_auth_cookie(response, token)
-    return {"token": token, "credits": credits if credits is not None else row[2], "plan": row[3]}
+    return {"token": token, "credits": credits if credits is not None else row[2], "plan": row[3], "email": email}
 
 @app.post("/api/auth/logout")
 def logout(response: Response):
@@ -492,7 +671,7 @@ def me(uid=Depends(current_uid)):
     db = get_db()
     row = _require_user_row(db, uid)
     credits = _ensure_test_account_credits(db, row[1])
-    return {"phone": row[1], "credits": credits if credits is not None else row[2], "plan": row[3]}
+    return {"email": row[1], "credits": credits if credits is not None else row[2], "plan": row[3]}
 
 # ─── GENERATE ─────────────────────────────────────────
 STYLES = {
@@ -643,7 +822,7 @@ def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
     img_data_uri = _image_data_uri(input_path)
     control_data_uri = _control_signal_data_uri(input_path)
     if not img_data_uri:
-        raise RuntimeError("未读取到用户上传的原始房间图片，无法生成参考设计图")
+        raise RuntimeError("The uploaded room image could not be read.")
     payload = {
         "model": ARK_IMAGE_MODEL,
         "prompt": _room_prompt(style_name, style_detail),
@@ -711,7 +890,7 @@ async def generate(file_id: str, req: GenReq, bg: BackgroundTasks, uid=Depends(c
     row = _require_user_row(db, uid)
     credits = row[2]
     if credits < 1:
-        raise HTTPException(402, "点数不足，请先充值")
+        raise HTTPException(402, "Not enough credits. Please upgrade first.")
     input_path = str(UPLOAD_DIR / file_id)
     if not Path(input_path).exists():
         raise HTTPException(404, "图片不存在")
@@ -737,10 +916,12 @@ def history(uid=Depends(current_uid)):
     return [{"id":r[0], "style":r[1], "url":r[2], "status":r[3], "created_at":r[4]} for r in rows]
 
 # ─── PAYMENT ──────────────────────────────────────────
-PLANS = {"c10":{"price":30,"credits":10,"name":"10次点数包"},
-         "c50":{"price":99,"credits":50,"name":"月度会员"},
-         "c200":{"price":269,"credits":200,"name":"季度会员"},
-         "c500":{"price":999,"credits":500,"name":"企业会员"}}
+PLANS = {
+    "c10": {"price": 30, "credits": 13, "name": "Starter Pack"},
+    "c50": {"price": 99, "credits": 78, "name": "Monthly"},
+    "c200": {"price": 269, "credits": 260, "name": "Quarterly"},
+    "c500": {"price": 999, "credits": 2600, "name": "Pro Annual"},
+}
 
 class OrderReq(BaseModel):
     plan_id: str
@@ -820,6 +1001,333 @@ async def order_detail(order_id: str, uid=Depends(current_uid)):
     payload["trade_no"] = provider_order_id
     payload["webhook_url"] = _creem_callback_url()
     return payload
+
+@app.get("/api/billing/history")
+def billing_history(uid=Depends(current_uid)):
+    rows = db_execute(
+        get_db(),
+        """SELECT id, plan_id, amount, credits, status, created_at, provider, provider_order_id
+           FROM orders
+           WHERE user_id=%s
+           ORDER BY created_at DESC
+           LIMIT 50""",
+        (uid,),
+    ).fetchall()
+    items = []
+    for row in rows:
+        plan_id = row[1]
+        plan = PLANS.get(plan_id, {})
+        items.append({
+            "order_id": row[0],
+            "plan_id": plan_id,
+            "plan_name": plan.get("name", plan_id),
+            "amount": row[2],
+            "credits": row[3],
+            "status": row[4],
+            "created_at": row[5],
+            "provider": row[6],
+            "trade_no": row[7],
+            "currency": "USD",
+        })
+    return items
+
+@app.get("/api/admin/dashboard")
+def admin_dashboard(request: Request, _=Depends(_require_admin)):
+    db = get_db()
+    users = db_execute(
+        db,
+        "SELECT id,email,credits,plan,created_at,last_login_at FROM users ORDER BY id DESC LIMIT 200"
+    ).fetchall()
+    orders = db_execute(
+        db,
+        """SELECT o.id,o.user_id,u.email,o.plan_id,o.amount,o.credits,o.status,o.created_at,o.provider,o.provider_order_id
+           FROM orders o
+           LEFT JOIN users u ON u.id=o.user_id
+           ORDER BY o.created_at DESC
+           LIMIT 200"""
+    ).fetchall()
+    total_users = db_execute(db, "SELECT COUNT(*) FROM users").fetchone()[0]
+    total_orders = db_execute(db, "SELECT COUNT(*) FROM orders").fetchone()[0]
+    paid_orders = db_execute(db, "SELECT COUNT(*) FROM orders WHERE status=%s", ("paid",)).fetchone()[0]
+    total_revenue = db_execute(db, "SELECT COALESCE(SUM(amount),0) FROM orders WHERE status=%s", ("paid",)).fetchone()[0] or 0
+    total_credits = db_execute(db, "SELECT COALESCE(SUM(credits),0) FROM users").fetchone()[0] or 0
+    user_rows = [
+        {
+            "id": row[0],
+            "email": row[1],
+            "credits": row[2],
+            "plan": row[3],
+            "created_at": row[4],
+            "last_login_at": row[5],
+        }
+        for row in users
+    ]
+    order_rows = [
+        {
+            "order_id": row[0],
+            "user_id": row[1],
+            "email": row[2],
+            "plan_id": row[3],
+            "plan_name": PLANS.get(row[3], {}).get("name", row[3]),
+            "amount": row[4],
+            "credits": row[5],
+            "status": row[6],
+            "created_at": row[7],
+            "provider": row[8],
+            "trade_no": row[9],
+        }
+        for row in orders
+    ]
+    return {
+        "summary": {
+            "total_users": total_users,
+            "total_orders": total_orders,
+            "paid_orders": paid_orders,
+            "total_revenue": total_revenue,
+            "total_credits": total_credits,
+        },
+        "users": user_rows,
+        "orders": order_rows,
+    }
+
+class AdminCreditReq(BaseModel):
+    email: str
+    credits: int
+
+class AdminGiftReq(BaseModel):
+    email: str
+    credits: int
+    reason: str = ""
+
+class AdminManualOrderReq(BaseModel):
+    email: str
+    plan_id: str
+    amount: int | None = None
+    credits: int | None = None
+    status: str = "paid"
+    note: str = ""
+
+@app.post("/api/admin/users/credits")
+def admin_update_credits(payload: AdminCreditReq, request: Request, _=Depends(_require_admin)):
+    db = get_db()
+    email = payload.email.strip().lower()
+    row = db_execute(db, "SELECT id,credits FROM users WHERE email=%s", (email,)).fetchone()
+    if not row:
+        raise HTTPException(404, "User not found.")
+    before_credits = int(row[1] or 0)
+    after_credits = int(payload.credits)
+    db_execute(db, "UPDATE users SET credits=%s WHERE id=%s", (after_credits, row[0]))
+    _log_credit_event(
+        db,
+        user_id=row[0],
+        email=email,
+        change_amount=after_credits - before_credits,
+        before_credits=before_credits,
+        after_credits=after_credits,
+        action="admin_set_credits",
+        reason="后台直接修改剩余次数",
+        operator="admin",
+    )
+    db.commit()
+    return {"ok": True, "email": email, "credits": payload.credits}
+
+@app.post("/api/admin/users/gift")
+def admin_gift_credits(payload: AdminGiftReq, request: Request, _=Depends(_require_admin)):
+    db = get_db()
+    email = payload.email.strip().lower()
+    credits = int(payload.credits or 0)
+    if credits <= 0:
+        raise HTTPException(400, "Credits must be greater than 0.")
+    row = db_execute(db, "SELECT id,credits FROM users WHERE email=%s", (email,)).fetchone()
+    if not row:
+        raise HTTPException(404, "User not found.")
+    before_credits = int(row[1] or 0)
+    after_credits = before_credits + credits
+    db_execute(db, "UPDATE users SET credits=%s WHERE id=%s", (after_credits, row[0]))
+    _log_credit_event(
+        db,
+        user_id=row[0],
+        email=email,
+        change_amount=credits,
+        before_credits=before_credits,
+        after_credits=after_credits,
+        action="admin_gift_credits",
+        reason=(payload.reason or "后台赠送次数").strip(),
+        operator="admin",
+    )
+    db.commit()
+    return {"ok": True, "email": email, "credits": after_credits}
+
+@app.post("/api/admin/orders/manual")
+def admin_create_manual_order(payload: AdminManualOrderReq, request: Request, _=Depends(_require_admin)):
+    db = get_db()
+    email = payload.email.strip().lower()
+    row = db_execute(db, "SELECT id,credits FROM users WHERE email=%s", (email,)).fetchone()
+    if not row:
+        raise HTTPException(404, "User not found.")
+    user_id, before_credits = row[0], int(row[1] or 0)
+    plan = PLANS.get(payload.plan_id)
+    if not plan:
+        raise HTTPException(400, "Invalid plan.")
+    amount = int(payload.amount if payload.amount is not None else plan["price"])
+    credits = int(payload.credits if payload.credits is not None else plan["credits"])
+    status = (payload.status or "paid").strip().lower()
+    if status not in {"paid", "pending", "failed"}:
+        raise HTTPException(400, "Invalid status.")
+    order_id = f"MANUAL{int(time.time())}{uuid.uuid4().hex[:6].upper()}"
+    now = datetime.utcnow().isoformat()
+    db_execute(
+        db,
+        """INSERT INTO orders
+           (id,user_id,plan_id,amount,credits,status,created_at,provider,provider_request_id,provider_customer_email,paid_at,admin_note)
+           VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+        (
+            order_id,
+            user_id,
+            payload.plan_id,
+            amount,
+            credits,
+            status,
+            now,
+            "manual",
+            order_id,
+            email,
+            now if status == "paid" else None,
+            (payload.note or "").strip(),
+        ),
+    )
+    after_credits = before_credits
+    if status == "paid":
+        after_credits = before_credits + credits
+        db_execute(db, "UPDATE users SET credits=%s WHERE id=%s", (after_credits, user_id))
+        _log_credit_event(
+            db,
+            user_id=user_id,
+            email=email,
+            change_amount=credits,
+            before_credits=before_credits,
+            after_credits=after_credits,
+            action="manual_order_credit",
+            reason=(payload.note or "后台手动补单").strip() or "后台手动补单",
+            operator="admin",
+            related_order_id=order_id,
+        )
+    db.commit()
+    return {"ok": True, "order_id": order_id, "status": status, "email": email, "credits": after_credits}
+
+@app.get("/api/admin/users/{user_id}")
+def admin_user_detail(user_id: int, request: Request, _=Depends(_require_admin)):
+    db = get_db()
+    user = db_execute(
+        db,
+        "SELECT id,email,credits,plan,created_at,last_login_at FROM users WHERE id=%s",
+        (user_id,),
+    ).fetchone()
+    if not user:
+        raise HTTPException(404, "User not found.")
+    orders = db_execute(
+        db,
+        """SELECT id,plan_id,amount,credits,status,created_at,provider,provider_order_id,admin_note
+           FROM orders WHERE user_id=%s ORDER BY created_at DESC LIMIT 100""",
+        (user_id,),
+    ).fetchall()
+    auth_logs = db_execute(
+        db,
+        """SELECT id,event,ip,user_agent,created_at
+           FROM auth_logs WHERE user_id=%s ORDER BY created_at DESC LIMIT 100""",
+        (user_id,),
+    ).fetchall()
+    credit_logs = db_execute(
+        db,
+        """SELECT id,change_amount,before_credits,after_credits,action,reason,operator,related_order_id,created_at
+           FROM credit_logs WHERE user_id=%s ORDER BY created_at DESC LIMIT 100""",
+        (user_id,),
+    ).fetchall()
+    return {
+        "user": {
+            "id": user[0],
+            "email": user[1],
+            "credits": user[2],
+            "plan": user[3],
+            "created_at": user[4],
+            "last_login_at": user[5],
+        },
+        "orders": [
+            {
+                "order_id": row[0],
+                "plan_id": row[1],
+                "plan_name": PLANS.get(row[1], {}).get("name", row[1]),
+                "amount": row[2],
+                "credits": row[3],
+                "status": row[4],
+                "created_at": row[5],
+                "provider": row[6],
+                "trade_no": row[7],
+                "note": row[8],
+            }
+            for row in orders
+        ],
+        "auth_logs": [
+            {
+                "id": row[0],
+                "event": row[1],
+                "ip": row[2],
+                "user_agent": row[3],
+                "created_at": row[4],
+            }
+            for row in auth_logs
+        ],
+        "credit_logs": [
+            {
+                "id": row[0],
+                "change_amount": row[1],
+                "before_credits": row[2],
+                "after_credits": row[3],
+                "action": row[4],
+                "reason": row[5],
+                "operator": row[6],
+                "related_order_id": row[7],
+                "created_at": row[8],
+            }
+            for row in credit_logs
+        ],
+    }
+
+@app.get("/api/admin/orders/export")
+def admin_orders_export(request: Request, _=Depends(_require_admin)):
+    db = get_db()
+    rows = db_execute(
+        db,
+        """SELECT o.id,u.email,o.plan_id,o.amount,o.credits,o.status,o.provider,o.provider_order_id,o.created_at,o.paid_at,o.admin_note
+           FROM orders o
+           LEFT JOIN users u ON u.id=o.user_id
+           ORDER BY o.created_at DESC
+           LIMIT 1000"""
+    ).fetchall()
+    output = ["order_id,email,plan_id,plan_name,amount,credits,status,provider,trade_no,created_at,paid_at,admin_note"]
+    for row in rows:
+        values = [
+            row[0],
+            row[1] or "",
+            row[2] or "",
+            PLANS.get(row[2], {}).get("name", row[2] or ""),
+            str(row[3] or 0),
+            str(row[4] or 0),
+            row[5] or "",
+            row[6] or "",
+            row[7] or "",
+            row[8] or "",
+            row[9] or "",
+            row[10] or "",
+        ]
+        escaped = ['"' + str(v).replace('"', '""') + '"' for v in values]
+        output.append(",".join(escaped))
+    csv_content = "\ufeff" + "\n".join(output)
+    return Response(
+        content=csv_content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="linggan-orders-{datetime.utcnow().strftime("%Y%m%d-%H%M%S")}.csv"'},
+    )
 
 @app.post("/api/payment/callback/creem")
 async def creem_cb(request: Request):

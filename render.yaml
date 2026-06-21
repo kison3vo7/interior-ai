@@ -5,7 +5,7 @@ services:
     plan: free
     dockerContext: .
     dockerfilePath: ./backend/Dockerfile
-    healthCheckPath: /docs
+    healthCheckPath: /
     envVars:
       - key: ARK_API_KEY
         sync: false
@@ -39,6 +39,8 @@ services:
         fromDatabase:
           name: interior-ai-db
           property: connectionString
+      - key: APP_ENV
+        value: production
 
 databases:
   - name: interior-ai-db

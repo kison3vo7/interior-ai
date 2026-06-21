@@ -1,0 +1,1315 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>灵感空间AI 管理后台</title>
+  <style>
+    :root{
+      --bg:#f3f7fb;
+      --panel:#ffffff;
+      --panel-soft:#f8fbff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --line:#dbe5f0;
+      --primary:#2563eb;
+      --primary-deep:#1d4ed8;
+      --primary-soft:#dbeafe;
+      --success:#16a34a;
+      --warning:#d97706;
+      --danger:#dc2626;
+      --shadow:0 18px 45px rgba(15,23,42,.08);
+      --radius:20px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      color:var(--text);
+      font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",ui-sans-serif,system-ui,sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,.14), transparent 28%),
+        linear-gradient(180deg,#f9fbff 0%, #f3f7fb 100%);
+    }
+    .app{
+      max-width:1500px;
+      margin:0 auto;
+      padding:28px;
+    }
+    .hero{
+      display:flex;
+      justify-content:space-between;
+      gap:20px;
+      align-items:flex-start;
+      padding:28px;
+      border-radius:30px;
+      border:1px solid rgba(255,255,255,.9);
+      background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(239,246,255,.92));
+      box-shadow:var(--shadow);
+      margin-bottom:18px;
+    }
+    .hero h1{
+      margin:0 0 10px;
+      font-size:34px;
+      line-height:1.08;
+      letter-spacing:-.03em;
+    }
+    .hero p{
+      margin:0;
+      max-width:760px;
+      line-height:1.8;
+      color:var(--muted);
+      font-size:15px;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:var(--primary-soft);
+      color:var(--primary);
+      font-weight:800;
+      font-size:12px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      margin-bottom:14px;
+    }
+    .meta{
+      display:flex;
+      flex-wrap:wrap;
+      gap:16px;
+      margin-top:14px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .toolbar,.filters,.gift-grid{
+      display:grid;
+      grid-template-columns:repeat(12,minmax(0,1fr));
+      gap:14px;
+      margin-bottom:18px;
+    }
+    .card{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .toolbar .card,.filters .card,.gift-grid .card{
+      padding:18px;
+    }
+    .span-2{grid-column:span 2}
+    .span-3{grid-column:span 3}
+    .span-4{grid-column:span 4}
+    .span-5{grid-column:span 5}
+    .span-6{grid-column:span 6}
+    .span-7{grid-column:span 7}
+    .span-8{grid-column:span 8}
+    .span-12{grid-column:span 12}
+    .label{
+      display:block;
+      margin-bottom:7px;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:700;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    input,select,textarea,button{
+      font:inherit;
+    }
+    input,select,textarea{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:13px;
+      padding:12px 14px;
+      background:#fff;
+      color:var(--text);
+      outline:none;
+    }
+    textarea{
+      min-height:88px;
+      resize:vertical;
+    }
+    input:focus,select:focus,textarea:focus{
+      border-color:rgba(37,99,235,.6);
+      box-shadow:0 0 0 4px rgba(37,99,235,.12);
+    }
+    .btn-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:flex-end;
+      height:100%;
+    }
+    button{
+      border:0;
+      border-radius:13px;
+      padding:12px 16px;
+      font-weight:700;
+      cursor:pointer;
+      transition:transform .15s ease, opacity .15s ease, box-shadow .15s ease;
+    }
+    button:hover{transform:translateY(-1px)}
+    button:disabled{opacity:.6;cursor:not-allowed;transform:none}
+    .btn-primary{
+      color:#fff;
+      background:linear-gradient(135deg,var(--primary),var(--primary-deep));
+      box-shadow:0 12px 24px rgba(37,99,235,.22);
+    }
+    .btn-ghost{
+      background:#fff;
+      color:var(--text);
+      border:1px solid var(--line);
+    }
+    .btn-danger{
+      background:#fee2e2;
+      color:#991b1b;
+      border:1px solid #fecaca;
+    }
+    .btn-success{
+      background:#dcfce7;
+      color:#166534;
+      border:1px solid #bbf7d0;
+    }
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(5,minmax(0,1fr));
+      gap:14px;
+      margin-bottom:18px;
+    }
+    .stat{
+      padding:18px;
+    }
+    .stat .k{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      margin-bottom:12px;
+    }
+    .stat .v{
+      font-size:30px;
+      font-weight:800;
+      letter-spacing:-.03em;
+    }
+    .stat .s{
+      margin-top:8px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .layout{
+      display:grid;
+      grid-template-columns:minmax(0,1.3fr) minmax(330px,.7fr);
+      gap:18px;
+      margin-bottom:18px;
+    }
+    .section{
+      padding:20px;
+    }
+    .section-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:12px;
+      margin-bottom:14px;
+    }
+    .section-head h2{
+      margin:0 0 6px;
+      font-size:22px;
+      letter-spacing:-.02em;
+    }
+    .section-head p{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .muted{color:var(--muted)}
+    .notes{
+      display:grid;
+      gap:12px;
+    }
+    .note{
+      padding:14px;
+      border-radius:15px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg,#fff,#f9fbff);
+    }
+    .note strong{
+      display:block;
+      margin-bottom:6px;
+      font-size:14px;
+    }
+    .table-wrap{
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius:16px;
+    }
+    table{
+      width:100%;
+      min-width:980px;
+      border-collapse:collapse;
+      background:#fff;
+    }
+    th,td{
+      padding:14px 12px;
+      border-bottom:1px solid var(--line);
+      text-align:left;
+      font-size:14px;
+      vertical-align:top;
+    }
+    th{
+      position:sticky;
+      top:0;
+      background:#f8fbff;
+      z-index:1;
+      font-size:12px;
+      color:#334155;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    tr:last-child td{border-bottom:0}
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      padding:5px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .tag.paid{background:#dcfce7;color:#166534}
+    .tag.pending{background:#fef3c7;color:#92400e}
+    .tag.failed{background:#fee2e2;color:#991b1b}
+    .tag.free{background:#e2e8f0;color:#334155}
+    .tag.manual{background:#ede9fe;color:#5b21b6}
+    .inline-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .inline-actions input{
+      min-width:88px;
+      padding:9px 10px;
+    }
+    .mini-btn{
+      padding:9px 12px;
+      border-radius:10px;
+      font-size:13px;
+    }
+    .empty{
+      padding:34px 18px;
+      text-align:center;
+      color:var(--muted);
+      font-size:14px;
+      border-radius:16px;
+      border:1px dashed var(--line);
+      background:#fafcff;
+    }
+    .drawer{
+      position:fixed;
+      top:0;
+      right:-860px;
+      width:min(860px,100vw);
+      height:100vh;
+      background:#fff;
+      box-shadow:-24px 0 60px rgba(15,23,42,.18);
+      transition:right .24s ease;
+      z-index:35;
+      display:flex;
+      flex-direction:column;
+    }
+    .drawer.open{right:0}
+    .drawer-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,.3);
+      z-index:34;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .2s ease;
+    }
+    .drawer-backdrop.show{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .drawer-head{
+      padding:24px 24px 18px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+    }
+    .drawer-head h3{
+      margin:0 0 8px;
+      font-size:24px;
+    }
+    .drawer-head p{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .drawer-body{
+      flex:1;
+      overflow:auto;
+      padding:20px 24px 28px;
+      background:#f8fbff;
+    }
+    .drawer-grid{
+      display:grid;
+      gap:16px;
+    }
+    .detail-card{
+      padding:18px;
+      border-radius:18px;
+      border:1px solid var(--line);
+      background:#fff;
+    }
+    .detail-card h4{
+      margin:0 0 12px;
+      font-size:18px;
+    }
+    .detail-meta{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+    }
+    .detail-meta div{
+      padding:12px;
+      border-radius:14px;
+      background:#f8fbff;
+      border:1px solid var(--line);
+    }
+    .detail-meta strong{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:6px;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+    }
+    .log-list{
+      display:grid;
+      gap:10px;
+    }
+    .log-item{
+      padding:12px 14px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fafcff;
+    }
+    .log-item .top{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:6px;
+      flex-wrap:wrap;
+      font-size:13px;
+    }
+    .log-item .body{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.7;
+      word-break:break-word;
+    }
+    .toast{
+      position:fixed;
+      right:20px;
+      bottom:20px;
+      z-index:40;
+      max-width:420px;
+      padding:14px 16px;
+      border-radius:14px;
+      background:#0f172a;
+      color:#fff;
+      box-shadow:var(--shadow);
+      opacity:0;
+      pointer-events:none;
+      transform:translateY(10px);
+      transition:all .2s ease;
+    }
+    .toast.show{
+      opacity:1;
+      transform:translateY(0);
+    }
+    .toast.error{background:#991b1b}
+    .sticky-actions{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+    @media (max-width:1220px){
+      .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .layout{grid-template-columns:1fr}
+      .span-2,.span-3,.span-4,.span-5,.span-6,.span-7,.span-8{grid-column:span 12}
+    }
+    @media (max-width:760px){
+      .app{padding:16px}
+      .hero{padding:22px;flex-direction:column}
+      .hero h1{font-size:28px}
+      .stats{grid-template-columns:1fr}
+      .detail-meta{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="hero">
+      <div>
+        <div class="pill">本地独立后台</div>
+        <h1>灵感空间AI 数据管理后台</h1>
+        <p>这个页面只给你自己看，和前台用户站点完全分开。你可以在这里查看注册用户、订单、登录记录、赠送次数日志，也可以直接手动补单、调整次数、导出订单 CSV。</p>
+        <div class="meta">
+          <span id="apiBaseText">接口地址：`http://127.0.0.1:8000`</span>
+          <span id="lastRefreshText">最近刷新：未加载</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <div class="card span-4">
+        <label class="label" for="adminKey">后台密钥</label>
+        <input id="adminKey" type="password" placeholder="请输入 x-admin-key">
+      </div>
+      <div class="card span-4">
+        <label class="label" for="apiBase">接口基础地址</label>
+        <input id="apiBase" type="text" placeholder="http://127.0.0.1:8000">
+      </div>
+      <div class="card span-4">
+        <div class="btn-row">
+          <button id="saveSettingsBtn" class="btn-ghost">保存本地配置</button>
+          <button id="refreshBtn" class="btn-primary">刷新后台数据</button>
+          <button id="exportBtn" class="btn-success">导出订单 CSV</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="card stat">
+        <div class="k">注册用户数</div>
+        <div class="v" id="statUsers">0</div>
+        <div class="s" id="statRecentUsers">近 7 天新增 0</div>
+      </div>
+      <div class="card stat">
+        <div class="k">订单总数</div>
+        <div class="v" id="statOrders">0</div>
+        <div class="s" id="statPaidRatio">已支付 0 / 总计 0</div>
+      </div>
+      <div class="card stat">
+        <div class="k">已支付金额</div>
+        <div class="v" id="statRevenue">$0.00</div>
+        <div class="s" id="statAov">客单价 $0.00</div>
+      </div>
+      <div class="card stat">
+        <div class="k">用户总次数</div>
+        <div class="v" id="statCredits">0</div>
+        <div class="s" id="statAvgCredits">人均 0 次</div>
+      </div>
+      <div class="card stat">
+        <div class="k">最新订单</div>
+        <div class="v" id="statLatest">-</div>
+        <div class="s" id="statLatestLabel">暂无数据</div>
+      </div>
+    </section>
+
+    <section class="filters">
+      <div class="card span-4">
+        <label class="label" for="userSearch">搜索邮箱</label>
+        <input id="userSearch" type="text" placeholder="输入注册邮箱搜索">
+      </div>
+      <div class="card span-2">
+        <label class="label" for="planFilter">套餐</label>
+        <select id="planFilter">
+          <option value="">全部套餐</option>
+        </select>
+      </div>
+      <div class="card span-2">
+        <label class="label" for="minCredits">最少剩余次数</label>
+        <input id="minCredits" type="number" min="0" placeholder="0">
+      </div>
+      <div class="card span-2">
+        <label class="label" for="orderStatusFilter">订单状态</label>
+        <select id="orderStatusFilter">
+          <option value="">全部状态</option>
+          <option value="paid">已支付</option>
+          <option value="pending">待支付</option>
+          <option value="failed">失败</option>
+        </select>
+      </div>
+      <div class="card span-2">
+        <div class="btn-row">
+          <button id="resetFiltersBtn" class="btn-danger">重置筛选</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="gift-grid">
+      <div class="card span-6">
+        <div class="section-head">
+          <div>
+            <h2>赠送次数</h2>
+            <p>快速给指定用户补测试次数、售后补发次数或运营赠送。</p>
+          </div>
+        </div>
+        <div class="gift-grid" style="margin-bottom:0">
+          <div class="span-5">
+            <label class="label" for="giftEmail">用户邮箱</label>
+            <input id="giftEmail" type="email" placeholder="请输入用户邮箱">
+          </div>
+          <div class="span-3">
+            <label class="label" for="giftCredits">赠送次数</label>
+            <input id="giftCredits" type="number" min="1" placeholder="例如 10">
+          </div>
+          <div class="span-4">
+            <label class="label" for="giftReason">赠送原因</label>
+            <input id="giftReason" type="text" placeholder="例如：测试补发 / 售后补偿">
+          </div>
+          <div class="span-12">
+            <div class="btn-row">
+              <button id="giftBtn" class="btn-primary">确认赠送次数</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <div class="section-head">
+          <div>
+            <h2>手动补单</h2>
+            <p>当线下收款、客服补录、支付回调异常时，可以从这里手动入账。</p>
+          </div>
+        </div>
+        <div class="gift-grid" style="margin-bottom:0">
+          <div class="span-4">
+            <label class="label" for="manualEmail">用户邮箱</label>
+            <input id="manualEmail" type="email" placeholder="请输入用户邮箱">
+          </div>
+          <div class="span-2">
+            <label class="label" for="manualPlan">套餐</label>
+            <select id="manualPlan">
+              <option value="c10">Starter Pack</option>
+              <option value="c50">Monthly</option>
+              <option value="c200">Quarterly</option>
+              <option value="c500">Pro Annual</option>
+            </select>
+          </div>
+          <div class="span-2">
+            <label class="label" for="manualAmount">金额</label>
+            <input id="manualAmount" type="number" min="0" placeholder="默认用套餐金额">
+          </div>
+          <div class="span-2">
+            <label class="label" for="manualCredits">次数</label>
+            <input id="manualCredits" type="number" min="0" placeholder="默认用套餐次数">
+          </div>
+          <div class="span-2">
+            <label class="label" for="manualStatus">状态</label>
+            <select id="manualStatus">
+              <option value="paid">已支付</option>
+              <option value="pending">待支付</option>
+              <option value="failed">失败</option>
+            </select>
+          </div>
+          <div class="span-12">
+            <label class="label" for="manualNote">备注</label>
+            <textarea id="manualNote" placeholder="例如：支付宝线下收款补录 / 客服手动补单"></textarea>
+          </div>
+          <div class="span-12">
+            <div class="btn-row">
+              <button id="manualOrderBtn" class="btn-primary">创建手动订单</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="card section">
+        <div class="section-head">
+          <div>
+            <h2>用户列表</h2>
+            <p>支持查看用户详情抽屉、修改剩余次数、查看登录态和购买记录。</p>
+          </div>
+          <div class="muted" id="usersCountText">0 个用户</div>
+        </div>
+        <div id="usersEmpty" class="empty">点击“刷新后台数据”后显示用户列表。</div>
+        <div id="usersTableWrap" class="table-wrap" hidden>
+          <table>
+            <thead>
+              <tr>
+                <th>邮箱</th>
+                <th>套餐</th>
+                <th>剩余次数</th>
+                <th>注册时间</th>
+                <th>最近登录</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card section">
+        <div class="section-head">
+          <div>
+            <h2>运营说明</h2>
+            <p>给你自己看的几个关键提醒。</p>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="note">
+            <strong>注册赠送规则</strong>
+            当前邮箱注册默认送 2 次生成，已写进后端注册逻辑。
+          </div>
+          <div class="note">
+            <strong>赠送日志</strong>
+            后台赠送、手动改次数、支付到账、补单入账，都会写进赠送次数日志。
+          </div>
+          <div class="note">
+            <strong>登录态记录</strong>
+            新注册和登录成功会记录时间、IP、浏览器 UA，便于排查账号问题。
+          </div>
+          <div class="note">
+            <strong>生成链保护</strong>
+            这个后台只管账户、订单和次数，不会碰图片生成链路。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card section">
+      <div class="section-head">
+        <div>
+          <h2>订单列表</h2>
+          <p>可导出、可按邮箱筛选，支持查看手动补单和真实支付记录。</p>
+        </div>
+        <div class="muted" id="ordersCountText">0 条订单</div>
+      </div>
+      <div id="ordersEmpty" class="empty">点击“刷新后台数据”后显示订单列表。</div>
+      <div id="ordersTableWrap" class="table-wrap" hidden>
+        <table>
+          <thead>
+            <tr>
+              <th>订单号</th>
+              <th>邮箱</th>
+              <th>套餐</th>
+              <th>金额</th>
+              <th>次数</th>
+              <th>状态</th>
+              <th>渠道</th>
+              <th>交易号</th>
+              <th>创建时间</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div id="drawerBackdrop" class="drawer-backdrop"></div>
+  <aside id="userDrawer" class="drawer">
+    <div class="drawer-head">
+      <div>
+        <h3 id="drawerTitle">用户详情</h3>
+        <p id="drawerSubtitle">查看登录态、购买记录、赠送日志明细。</p>
+      </div>
+      <button id="closeDrawerBtn" class="btn-ghost">关闭</button>
+    </div>
+    <div class="drawer-body">
+      <div id="drawerLoading" class="empty">正在加载用户详情...</div>
+      <div id="drawerContent" class="drawer-grid" hidden>
+        <div class="detail-card">
+          <h4>基础信息</h4>
+          <div class="detail-meta" id="userMeta"></div>
+        </div>
+        <div class="detail-card">
+          <h4>购买记录明细页</h4>
+          <div id="detailOrders" class="log-list"></div>
+        </div>
+        <div class="detail-card">
+          <h4>赠送次数日志</h4>
+          <div id="detailCredits" class="log-list"></div>
+        </div>
+        <div class="detail-card">
+          <h4>登录态记录</h4>
+          <div id="detailAuthLogs" class="log-list"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const DEFAULT_API_BASE = window.__ADMIN_API__ || 'http://127.0.0.1:8000';
+    const STORAGE_KEY = 'linggan_admin_dashboard_settings';
+    const PLAN_LABELS = {
+      c10: 'Starter Pack',
+      c50: 'Monthly',
+      c200: 'Quarterly',
+      c500: 'Pro Annual',
+      free: '免费'
+    };
+
+    const state = {
+      summary: { total_users: 0, total_orders: 0, paid_orders: 0, total_revenue: 0, total_credits: 0 },
+      users: [],
+      orders: [],
+      filteredUsers: [],
+      filteredOrders: [],
+      currentUserDetail: null
+    };
+
+    const els = {
+      adminKey: document.getElementById('adminKey'),
+      apiBase: document.getElementById('apiBase'),
+      apiBaseText: document.getElementById('apiBaseText'),
+      lastRefreshText: document.getElementById('lastRefreshText'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      exportBtn: document.getElementById('exportBtn'),
+      saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+      resetFiltersBtn: document.getElementById('resetFiltersBtn'),
+      userSearch: document.getElementById('userSearch'),
+      planFilter: document.getElementById('planFilter'),
+      minCredits: document.getElementById('minCredits'),
+      orderStatusFilter: document.getElementById('orderStatusFilter'),
+      statUsers: document.getElementById('statUsers'),
+      statRecentUsers: document.getElementById('statRecentUsers'),
+      statOrders: document.getElementById('statOrders'),
+      statPaidRatio: document.getElementById('statPaidRatio'),
+      statRevenue: document.getElementById('statRevenue'),
+      statAov: document.getElementById('statAov'),
+      statCredits: document.getElementById('statCredits'),
+      statAvgCredits: document.getElementById('statAvgCredits'),
+      statLatest: document.getElementById('statLatest'),
+      statLatestLabel: document.getElementById('statLatestLabel'),
+      usersCountText: document.getElementById('usersCountText'),
+      usersEmpty: document.getElementById('usersEmpty'),
+      usersTableWrap: document.getElementById('usersTableWrap'),
+      usersTableBody: document.getElementById('usersTableBody'),
+      ordersCountText: document.getElementById('ordersCountText'),
+      ordersEmpty: document.getElementById('ordersEmpty'),
+      ordersTableWrap: document.getElementById('ordersTableWrap'),
+      ordersTableBody: document.getElementById('ordersTableBody'),
+      giftEmail: document.getElementById('giftEmail'),
+      giftCredits: document.getElementById('giftCredits'),
+      giftReason: document.getElementById('giftReason'),
+      giftBtn: document.getElementById('giftBtn'),
+      manualEmail: document.getElementById('manualEmail'),
+      manualPlan: document.getElementById('manualPlan'),
+      manualAmount: document.getElementById('manualAmount'),
+      manualCredits: document.getElementById('manualCredits'),
+      manualStatus: document.getElementById('manualStatus'),
+      manualNote: document.getElementById('manualNote'),
+      manualOrderBtn: document.getElementById('manualOrderBtn'),
+      drawer: document.getElementById('userDrawer'),
+      drawerBackdrop: document.getElementById('drawerBackdrop'),
+      closeDrawerBtn: document.getElementById('closeDrawerBtn'),
+      drawerTitle: document.getElementById('drawerTitle'),
+      drawerSubtitle: document.getElementById('drawerSubtitle'),
+      drawerLoading: document.getElementById('drawerLoading'),
+      drawerContent: document.getElementById('drawerContent'),
+      userMeta: document.getElementById('userMeta'),
+      detailOrders: document.getElementById('detailOrders'),
+      detailCredits: document.getElementById('detailCredits'),
+      detailAuthLogs: document.getElementById('detailAuthLogs'),
+      toast: document.getElementById('toast')
+    };
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const saved = raw ? JSON.parse(raw) : {};
+        els.adminKey.value = saved.adminKey || '';
+        els.apiBase.value = saved.apiBase || DEFAULT_API_BASE;
+      } catch {
+        els.adminKey.value = '';
+        els.apiBase.value = DEFAULT_API_BASE;
+      }
+      updateApiBaseLabel();
+    }
+
+    function saveSettings() {
+      const payload = {
+        adminKey: els.adminKey.value.trim(),
+        apiBase: normalizeApiBase(els.apiBase.value)
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      els.apiBase.value = payload.apiBase;
+      updateApiBaseLabel();
+      toast('本地配置已保存');
+    }
+
+    function normalizeApiBase(value) {
+      const base = (value || DEFAULT_API_BASE).trim().replace(/\/+$/,'');
+      return base || DEFAULT_API_BASE;
+    }
+
+    function updateApiBaseLabel() {
+      els.apiBaseText.textContent = '接口地址：' + normalizeApiBase(els.apiBase.value);
+    }
+
+    function toast(message, type = 'success') {
+      els.toast.textContent = message;
+      els.toast.className = 'toast show' + (type === 'error' ? ' error' : '');
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        els.toast.className = 'toast';
+      }, 2800);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function formatDate(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value).replace('T',' ').slice(0,19);
+      return date.toLocaleString();
+    }
+
+    function formatCurrency(value) {
+      return '$' + Number(value || 0).toFixed(2);
+    }
+
+    function planLabel(value) {
+      return PLAN_LABELS[value] || value || '-';
+    }
+
+    function statusTag(status, provider = '') {
+      const val = String(status || 'unknown').toLowerCase();
+      const cls = ['paid','pending','failed'].includes(val) ? val : (provider === 'manual' ? 'manual' : 'free');
+      const labelMap = { paid:'已支付', pending:'待支付', failed:'失败', free:'免费', manual:'手动' };
+      return '<span class="tag ' + cls + '">' + escapeHtml(labelMap[cls] || status || '未知') + '</span>';
+    }
+
+    function actionLabel(action) {
+      const map = {
+        signup_bonus: '注册赠送',
+        payment_credit: '支付到账',
+        admin_set_credits: '后台改次数',
+        admin_gift_credits: '后台赠送',
+        manual_order_credit: '手动补单到账'
+      };
+      return map[action] || action || '未知动作';
+    }
+
+    function authEventLabel(event) {
+      const map = { register: '注册', login: '登录' };
+      return map[event] || event || '未知事件';
+    }
+
+    async function apiFetch(path, options = {}) {
+      const headers = {
+        'x-admin-key': els.adminKey.value.trim(),
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {})
+      };
+      const res = await fetch(normalizeApiBase(els.apiBase.value) + path, { ...options, headers });
+      if (!res.ok) {
+        let detail = res.statusText;
+        try {
+          const body = await res.json();
+          detail = body.detail || body.message || detail;
+        } catch {}
+        throw new Error(detail || '请求失败');
+      }
+      return res;
+    }
+
+    async function apiJson(path, options = {}) {
+      const res = await apiFetch(path, options);
+      return res.json();
+    }
+
+    async function refreshDashboard() {
+      const key = els.adminKey.value.trim();
+      if (!key) {
+        toast('请先填写后台密钥', 'error');
+        els.adminKey.focus();
+        return;
+      }
+      updateApiBaseLabel();
+      els.refreshBtn.disabled = true;
+      els.refreshBtn.textContent = '加载中...';
+      try {
+        const data = await apiJson('/api/admin/dashboard');
+        state.summary = data.summary || {};
+        state.users = Array.isArray(data.users) ? data.users : [];
+        state.orders = Array.isArray(data.orders) ? data.orders : [];
+        rebuildPlanFilter();
+        applyFilters();
+        renderSummary();
+        els.lastRefreshText.textContent = '最近刷新：' + new Date().toLocaleString();
+        saveSettings();
+      } catch (error) {
+        toast(error.message || '后台数据加载失败', 'error');
+      } finally {
+        els.refreshBtn.disabled = false;
+        els.refreshBtn.textContent = '刷新后台数据';
+      }
+    }
+
+    function rebuildPlanFilter() {
+      const plans = Array.from(new Set(state.users.map(item => item.plan).filter(Boolean))).sort();
+      const previous = els.planFilter.value;
+      els.planFilter.innerHTML = '<option value="">全部套餐</option>' + plans.map(plan => {
+        return '<option value="' + escapeHtml(plan) + '">' + escapeHtml(planLabel(plan)) + '</option>';
+      }).join('');
+      if (plans.includes(previous)) {
+        els.planFilter.value = previous;
+      }
+    }
+
+    function applyFilters() {
+      const search = els.userSearch.value.trim().toLowerCase();
+      const plan = els.planFilter.value;
+      const minCredits = Number(els.minCredits.value || 0);
+      const orderStatus = els.orderStatusFilter.value;
+
+      state.filteredUsers = state.users.filter(item => {
+        const email = String(item.email || '').toLowerCase();
+        return (!search || email.includes(search))
+          && (!plan || item.plan === plan)
+          && Number(item.credits || 0) >= minCredits;
+      });
+
+      state.filteredOrders = state.orders.filter(item => {
+        const email = String(item.email || '').toLowerCase();
+        return (!search || email.includes(search))
+          && (!orderStatus || String(item.status || '').toLowerCase() === orderStatus);
+      });
+
+      renderUsers();
+      renderOrders();
+      renderSummary();
+    }
+
+    function renderSummary() {
+      const summary = state.summary || {};
+      const paidOrders = Number(summary.paid_orders || 0);
+      const totalOrders = Number(summary.total_orders || 0);
+      const totalUsers = Number(summary.total_users || 0);
+      const totalRevenue = Number(summary.total_revenue || 0);
+      const totalCredits = Number(summary.total_credits || 0);
+      const recentUsers = state.users.filter(item => {
+        if (!item.created_at) return false;
+        const diff = Date.now() - new Date(item.created_at).getTime();
+        return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
+      }).length;
+      const latestOrder = [...state.orders].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+
+      els.statUsers.textContent = String(totalUsers);
+      els.statRecentUsers.textContent = '近 7 天新增 ' + recentUsers + ' 个';
+      els.statOrders.textContent = String(totalOrders);
+      els.statPaidRatio.textContent = '已支付 ' + paidOrders + ' / 总计 ' + totalOrders;
+      els.statRevenue.textContent = formatCurrency(totalRevenue);
+      els.statAov.textContent = '客单价 ' + formatCurrency(paidOrders ? totalRevenue / paidOrders : 0);
+      els.statCredits.textContent = String(totalCredits);
+      els.statAvgCredits.textContent = '人均 ' + (totalUsers ? (totalCredits / totalUsers).toFixed(1) : '0') + ' 次';
+      els.statLatest.textContent = latestOrder ? formatDate(latestOrder.created_at).split(' ')[0] : '-';
+      els.statLatestLabel.textContent = latestOrder ? (latestOrder.email || '-') + ' · ' + (latestOrder.provider === 'manual' ? '手动补单' : '正常订单') : '暂无订单';
+    }
+
+    function renderUsers() {
+      els.usersCountText.textContent = state.filteredUsers.length + ' 个用户';
+      if (!state.filteredUsers.length) {
+        els.usersEmpty.hidden = false;
+        els.usersTableWrap.hidden = true;
+        els.usersTableBody.innerHTML = '';
+        return;
+      }
+      els.usersEmpty.hidden = true;
+      els.usersTableWrap.hidden = false;
+      els.usersTableBody.innerHTML = state.filteredUsers.map(item => `
+        <tr>
+          <td><strong>${escapeHtml(item.email || '-')}</strong></td>
+          <td>${statusTag(item.plan || 'free')}</td>
+          <td>${escapeHtml(item.credits ?? 0)}</td>
+          <td>${escapeHtml(formatDate(item.created_at))}</td>
+          <td>${escapeHtml(formatDate(item.last_login_at))}</td>
+          <td>
+            <div class="inline-actions">
+              <input type="number" min="0" value="${escapeHtml(item.credits ?? 0)}" data-credit-input="${escapeHtml(item.email || '')}">
+              <button class="btn-primary mini-btn" data-credit-save="${escapeHtml(item.email || '')}">保存次数</button>
+              <button class="btn-ghost mini-btn" data-user-detail="${escapeHtml(item.id)}">查看详情</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderOrders() {
+      els.ordersCountText.textContent = state.filteredOrders.length + ' 条订单';
+      if (!state.filteredOrders.length) {
+        els.ordersEmpty.hidden = false;
+        els.ordersTableWrap.hidden = true;
+        els.ordersTableBody.innerHTML = '';
+        return;
+      }
+      els.ordersEmpty.hidden = true;
+      els.ordersTableWrap.hidden = false;
+      els.ordersTableBody.innerHTML = state.filteredOrders.map(item => `
+        <tr>
+          <td>${escapeHtml(item.order_id || '-')}</td>
+          <td>${escapeHtml(item.email || '-')}</td>
+          <td>${escapeHtml(item.plan_name || planLabel(item.plan_id))}</td>
+          <td>${escapeHtml(formatCurrency(item.amount))}</td>
+          <td>${escapeHtml(item.credits ?? 0)}</td>
+          <td>${statusTag(item.status || 'pending', item.provider || '')}</td>
+          <td>${escapeHtml(item.provider || '-')}</td>
+          <td>${escapeHtml(item.trade_no || '-')}</td>
+          <td>${escapeHtml(formatDate(item.created_at))}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function saveUserCredits(email, credits, button) {
+      button.disabled = true;
+      button.textContent = '保存中...';
+      try {
+        await apiJson('/api/admin/users/credits', {
+          method:'POST',
+          body: JSON.stringify({ email, credits: Number(credits || 0) })
+        });
+        const user = state.users.find(item => item.email === email);
+        if (user) user.credits = Number(credits || 0);
+        applyFilters();
+        toast('次数已更新：' + email);
+      } catch (error) {
+        toast(error.message || '修改次数失败', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = '保存次数';
+      }
+    }
+
+    async function handleUsersTableClick(event) {
+      const creditButton = event.target.closest('[data-credit-save]');
+      if (creditButton) {
+        const email = creditButton.getAttribute('data-credit-save');
+        const input = document.querySelector('[data-credit-input="' + CSS.escape(email) + '"]');
+        if (input) await saveUserCredits(email, input.value, creditButton);
+        return;
+      }
+      const detailButton = event.target.closest('[data-user-detail]');
+      if (detailButton) {
+        await openUserDetail(Number(detailButton.getAttribute('data-user-detail')));
+      }
+    }
+
+    async function giftCredits() {
+      const email = els.giftEmail.value.trim().toLowerCase();
+      const credits = Number(els.giftCredits.value || 0);
+      const reason = els.giftReason.value.trim();
+      if (!email || !credits) {
+        toast('请填写赠送邮箱和次数', 'error');
+        return;
+      }
+      els.giftBtn.disabled = true;
+      els.giftBtn.textContent = '处理中...';
+      try {
+        await apiJson('/api/admin/users/gift', {
+          method:'POST',
+          body: JSON.stringify({ email, credits, reason })
+        });
+        toast('赠送成功：' + email + ' +' + credits + ' 次');
+        els.giftCredits.value = '';
+        els.giftReason.value = '';
+        await refreshDashboard();
+      } catch (error) {
+        toast(error.message || '赠送失败', 'error');
+      } finally {
+        els.giftBtn.disabled = false;
+        els.giftBtn.textContent = '确认赠送次数';
+      }
+    }
+
+    async function createManualOrder() {
+      const email = els.manualEmail.value.trim().toLowerCase();
+      if (!email) {
+        toast('请先填写补单用户邮箱', 'error');
+        return;
+      }
+      const payload = {
+        email,
+        plan_id: els.manualPlan.value,
+        amount: els.manualAmount.value ? Number(els.manualAmount.value) : null,
+        credits: els.manualCredits.value ? Number(els.manualCredits.value) : null,
+        status: els.manualStatus.value,
+        note: els.manualNote.value.trim()
+      };
+      els.manualOrderBtn.disabled = true;
+      els.manualOrderBtn.textContent = '创建中...';
+      try {
+        const data = await apiJson('/api/admin/orders/manual', {
+          method:'POST',
+          body: JSON.stringify(payload)
+        });
+        toast('手动订单已创建：' + data.order_id);
+        els.manualAmount.value = '';
+        els.manualCredits.value = '';
+        els.manualNote.value = '';
+        await refreshDashboard();
+      } catch (error) {
+        toast(error.message || '手动补单失败', 'error');
+      } finally {
+        els.manualOrderBtn.disabled = false;
+        els.manualOrderBtn.textContent = '创建手动订单';
+      }
+    }
+
+    async function exportOrdersCsv() {
+      els.exportBtn.disabled = true;
+      els.exportBtn.textContent = '导出中...';
+      try {
+        const res = await apiFetch('/api/admin/orders/export');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dispo = res.headers.get('Content-Disposition') || '';
+        const match = dispo.match(/filename=\"([^\"]+)\"/);
+        a.href = url;
+        a.download = match ? match[1] : 'linggan-orders.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        toast('订单 CSV 已导出');
+      } catch (error) {
+        toast(error.message || '导出失败', 'error');
+      } finally {
+        els.exportBtn.disabled = false;
+        els.exportBtn.textContent = '导出订单 CSV';
+      }
+    }
+
+    function openDrawer() {
+      els.drawer.classList.add('open');
+      els.drawerBackdrop.classList.add('show');
+    }
+
+    function closeDrawer() {
+      els.drawer.classList.remove('open');
+      els.drawerBackdrop.classList.remove('show');
+    }
+
+    function renderLogList(container, items, renderItem) {
+      if (!items.length) {
+        container.innerHTML = '<div class="empty">暂无记录</div>';
+        return;
+      }
+      container.innerHTML = items.map(renderItem).join('');
+    }
+
+    async function openUserDetail(userId) {
+      openDrawer();
+      els.drawerLoading.hidden = false;
+      els.drawerContent.hidden = true;
+      els.drawerTitle.textContent = '用户详情';
+      els.drawerSubtitle.textContent = '正在读取登录态、购买记录和赠送日志...';
+      try {
+        const data = await apiJson('/api/admin/users/' + userId);
+        state.currentUserDetail = data;
+        const user = data.user || {};
+        els.drawerTitle.textContent = user.email || '用户详情';
+        els.drawerSubtitle.textContent = '注册时间：' + formatDate(user.created_at) + ' · 最近登录：' + formatDate(user.last_login_at);
+        els.userMeta.innerHTML = [
+          ['用户 ID', user.id],
+          ['注册邮箱', user.email],
+          ['当前套餐', planLabel(user.plan)],
+          ['当前次数', user.credits],
+          ['注册时间', formatDate(user.created_at)],
+          ['最近登录', formatDate(user.last_login_at)]
+        ].map(([label, value]) => `
+          <div>
+            <strong>${escapeHtml(label)}</strong>
+            <span>${escapeHtml(value ?? '-')}</span>
+          </div>
+        `).join('');
+
+        renderLogList(els.detailOrders, data.orders || [], item => `
+          <div class="log-item">
+            <div class="top">
+              <strong>${escapeHtml(item.order_id)}</strong>
+              <span>${escapeHtml(formatDate(item.created_at))}</span>
+            </div>
+            <div class="body">
+              套餐：${escapeHtml(item.plan_name || planLabel(item.plan_id))} ｜ 金额：${escapeHtml(formatCurrency(item.amount))} ｜ 次数：${escapeHtml(item.credits)} ｜ 状态：${escapeHtml(item.status)} ｜ 渠道：${escapeHtml(item.provider || '-')} ${item.note ? '｜ 备注：' + escapeHtml(item.note) : ''}
+            </div>
+          </div>
+        `);
+
+        renderLogList(els.detailCredits, data.credit_logs || [], item => `
+          <div class="log-item">
+            <div class="top">
+              <strong>${escapeHtml(actionLabel(item.action))}</strong>
+              <span>${escapeHtml(formatDate(item.created_at))}</span>
+            </div>
+            <div class="body">
+              变化：${item.change_amount > 0 ? '+' : ''}${escapeHtml(item.change_amount)} ｜ 变更前：${escapeHtml(item.before_credits)} ｜ 变更后：${escapeHtml(item.after_credits)} ｜ 操作人：${escapeHtml(item.operator || '-')} ${item.related_order_id ? '｜ 关联订单：' + escapeHtml(item.related_order_id) : ''}<br>
+              原因：${escapeHtml(item.reason || '-')}
+            </div>
+          </div>
+        `);
+
+        renderLogList(els.detailAuthLogs, data.auth_logs || [], item => `
+          <div class="log-item">
+            <div class="top">
+              <strong>${escapeHtml(authEventLabel(item.event))}</strong>
+              <span>${escapeHtml(formatDate(item.created_at))}</span>
+            </div>
+            <div class="body">
+              IP：${escapeHtml(item.ip || '-')}<br>
+              UA：${escapeHtml(item.user_agent || '-')}
+            </div>
+          </div>
+        `);
+
+        els.drawerLoading.hidden = true;
+        els.drawerContent.hidden = false;
+      } catch (error) {
+        els.drawerLoading.hidden = false;
+        els.drawerLoading.textContent = error.message || '用户详情加载失败';
+        els.drawerContent.hidden = true;
+      }
+    }
+
+    function resetFilters() {
+      els.userSearch.value = '';
+      els.planFilter.value = '';
+      els.minCredits.value = '';
+      els.orderStatusFilter.value = '';
+      applyFilters();
+    }
+
+    els.refreshBtn.addEventListener('click', refreshDashboard);
+    els.saveSettingsBtn.addEventListener('click', saveSettings);
+    els.exportBtn.addEventListener('click', exportOrdersCsv);
+    els.resetFiltersBtn.addEventListener('click', resetFilters);
+    els.userSearch.addEventListener('input', applyFilters);
+    els.planFilter.addEventListener('change', applyFilters);
+    els.minCredits.addEventListener('input', applyFilters);
+    els.orderStatusFilter.addEventListener('change', applyFilters);
+    els.apiBase.addEventListener('input', updateApiBaseLabel);
+    els.usersTableBody.addEventListener('click', handleUsersTableClick);
+    els.giftBtn.addEventListener('click', giftCredits);
+    els.manualOrderBtn.addEventListener('click', createManualOrder);
+    els.closeDrawerBtn.addEventListener('click', closeDrawer);
+    els.drawerBackdrop.addEventListener('click', closeDrawer);
+
+    loadSettings();
+  </script>
+</body>
+</html>

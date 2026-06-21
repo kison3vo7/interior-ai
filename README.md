@@ -33,13 +33,19 @@ cp ../.env.example .env
 ```bash
 ARK_API_KEY=your_ark_api_key_here
 JWT_SECRET=change-this-to-a-long-random-string
+ADMIN_KEY=change-this-to-a-very-long-random-admin-key
 ```
 
 ### 3. 启动后端
 ```bash
 uvicorn main:app --reload --port 8000
 ```
-API 文档自动生成：http://localhost:8000/docs
+开发环境文档地址：http://localhost:8000/docs
+
+说明：
+
+- `APP_ENV=development` 时会开启 `/docs`
+- `APP_ENV=production` 时会关闭 `/docs` 和 `/redoc`
 
 ### 4. 前端
 直接用浏览器打开 `index.html` 即可预览完整 UI。
@@ -63,8 +69,8 @@ docker compose up --build
   ├── SQLite → 生产换 PostgreSQL (阿里云RDS)
   ├── 本地存储 → 生产换 阿里云OSS
   └── 豆包生图调用:
-      方案A: /images/edits（优先保留房间结构）
-      方案B: /images/generations + reference image（回退方案）
+      当前方案: /images/generations + image-to-image 参考图
+      目标效果: 尽量保留原房间结构并做风格化改造
 ```
 
 ## 当前图片生成链路
@@ -72,16 +78,15 @@ docker compose up --build
 后端当前直接对接火山引擎 Ark：
 
 - 接口域名：`https://ark.cn-beijing.volces.com`
-- 优先接口：`/api/v3/images/edits`
-- 回退接口：`/api/v3/images/generations`
-- 使用模型：`doubao-seedream-4-0-250828`
+- 当前使用接口：`/api/v3/images/generations`
+- 当前使用模型：`doubao-seedream-5-0-260128`
 - 鉴权方式：`Authorization: Bearer $ARK_API_KEY`
 
 ## 核心 API
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | /api/auth/register | 注册（送1次免费） |
+| POST | /api/auth/register | 邮箱注册（送2次免费，密码至少8位） |
 | POST | /api/auth/login | 登录，返回JWT |
 | POST | /api/generate/upload | 上传房间图片 |
 | POST | /api/generate/{file_id} | 触发豆包生成，扣1点数 |
@@ -96,7 +101,6 @@ docker compose up --build
 - [x] Creem Checkout 支付骨架
 - [ ] 阿里云 OSS 图片存储
 - [ ] Redis + Celery 异步任务队列（避免 HTTP 超时）
-- [ ] 手机验证码登录（阿里云短信）
 - [ ] Nginx 反向代理 + HTTPS
 
 ## 生产支付说明
@@ -120,6 +124,8 @@ CREEM_PRODUCT_C500=prod_xxx_for_500_credits
 PUBLIC_SITE_URL=https://lingganspace.work
 NEXT_PUBLIC_BASE_URL=https://lingganspace.work
 DOMAIN=lingganspace.work
+ADMIN_KEY=change-this-to-a-very-long-random-admin-key
+APP_ENV=production
 ```
 
 同时在 Creem 后台把 webhook 地址设置为：
@@ -145,3 +151,5 @@ https://lingganspace.work/api/payment/callback/creem
 - Render Blueprint 需要 Git 远端仓库
 - Creem API Key 和 Webhook Secret 建议作为环境变量注入
 - Railway 也需要同步配置相同的 Creem 与站点域名环境变量
+- 生产环境必须设置强随机 `ADMIN_KEY`
+- 生产环境默认关闭 `/docs`，健康检查已改为 `/`
