@@ -118,6 +118,77 @@ def _ensure_orders_schema(db) -> None:
             db.execute(f"ALTER TABLE orders ADD COLUMN {name} {spec}")
     db.commit()
 
+def _table_columns(db, table_name: str) -> set[str]:
+    if USING_POSTGRES:
+        cur = db.cursor()
+        cur.execute(
+            """SELECT column_name
+               FROM information_schema.columns
+               WHERE table_schema='public' AND table_name=%s""",
+            (table_name,),
+        )
+        return {row[0] for row in cur.fetchall()}
+    rows = db.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return {row[1] for row in rows}
+
+def _ensure_users_schema(db) -> None:
+    now = datetime.utcnow().isoformat()
+    column_specs = {
+        "email": "TEXT",
+        "password": "TEXT",
+        "credits": "INTEGER DEFAULT 0",
+        "plan": "TEXT DEFAULT 'free'",
+        "created_at": "TEXT",
+        "last_login_at": "TEXT",
+    }
+
+    if USING_POSTGRES:
+        cur = db.cursor()
+        columns = _table_columns(db, "users")
+        for name, spec in column_specs.items():
+            if name not in columns:
+                cur.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {name} {spec}")
+        columns = _table_columns(db, "users")
+        if "phone" in columns:
+            cur.execute(
+                """UPDATE users
+                   SET email=COALESCE(NULLIF(email, ''), NULLIF(phone, ''))
+                   WHERE phone IS NOT NULL"""
+            )
+        cur.execute("UPDATE users SET credits=0 WHERE credits IS NULL")
+        cur.execute("UPDATE users SET plan='free' WHERE plan IS NULL OR plan=''")
+        cur.execute("UPDATE users SET created_at=%s WHERE created_at IS NULL OR created_at=''", (now,))
+        cur.execute(
+            """UPDATE users
+               SET last_login_at=COALESCE(NULLIF(last_login_at, ''), created_at, %s)
+               WHERE last_login_at IS NULL OR last_login_at=''""",
+            (now,),
+        )
+        db.commit()
+        return
+
+    columns = _table_columns(db, "users")
+    for name, spec in column_specs.items():
+        if name not in columns:
+            db.execute(f"ALTER TABLE users ADD COLUMN {name} {spec}")
+    columns = _table_columns(db, "users")
+    if "phone" in columns:
+        db.execute(
+            """UPDATE users
+               SET email=COALESCE(NULLIF(email, ''), NULLIF(phone, ''))
+               WHERE phone IS NOT NULL"""
+        )
+    db.execute("UPDATE users SET credits=0 WHERE credits IS NULL")
+    db.execute("UPDATE users SET plan='free' WHERE plan IS NULL OR plan=''")
+    db.execute("UPDATE users SET created_at=? WHERE created_at IS NULL OR created_at=''", (now,))
+    db.execute(
+        """UPDATE users
+           SET last_login_at=COALESCE(NULLIF(last_login_at, ''), created_at, ?)
+           WHERE last_login_at IS NULL OR last_login_at=''""",
+        (now,),
+    )
+    db.commit()
+
 def _ensure_aux_tables(db) -> None:
     if USING_POSTGRES:
         cur = db.cursor()
@@ -212,6 +283,7 @@ def get_db():
             admin_note TEXT
         )""")
         conn.commit()
+        _ensure_users_schema(conn)
         _ensure_orders_schema(conn)
         _ensure_aux_tables(conn)
         return conn
@@ -233,6 +305,7 @@ def get_db():
         provider_product_id TEXT, provider_checkout_url TEXT, provider_request_id TEXT,
         provider_customer_email TEXT, paid_at TEXT, admin_note TEXT)""")
     conn.commit()
+    _ensure_users_schema(conn)
     _ensure_orders_schema(conn)
     _ensure_aux_tables(conn)
     return conn
@@ -616,6 +689,9 @@ def register(r: AuthReq, response: Response, request: Request):
         raise HTTPException(400, "Please enter a valid email address.")
     initial_credits = TEST_ACCOUNT_MIN_CREDITS if email == TEST_ACCOUNT_EMAIL else 2
     try:
+        existing = db_execute(db, "SELECT id FROM users WHERE email=%s", (email,)).fetchone()
+        if existing:
+            raise HTTPException(400, "Email already registered.")
         now = datetime.utcnow().isoformat()
         db_execute(
             db,
