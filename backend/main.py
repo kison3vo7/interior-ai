@@ -7,7 +7,7 @@ import shutil
 
 import httpx, bcrypt, jwt
 import psycopg
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 try:
     from pillow_heif import register_heif_opener
 except Exception:  # pragma: no cover - optional runtime dependency
@@ -742,7 +742,7 @@ def _normalize_uploaded_image(file: UploadFile, content: bytes) -> tuple[str, by
         ext = suffix if suffix else ".jpg"
         return ext, content
 
-def _control_signal_data_uri(input_path: str) -> str:
+def _framing_overlay_data_uri(input_path: str) -> str:
     path = Path(input_path)
     if not path.exists():
         return ""
@@ -780,6 +780,41 @@ def _control_signal_data_uri(input_path: str) -> str:
             note = "保留原图结构\n按上传图改造"
             draw.rounded_rectangle([margin * 2, margin * 2, margin * 2 + 360, margin * 2 + 128], radius=18, fill=(255, 255, 255))
             draw.text((margin * 2 + 18, margin * 2 + 16), note, fill=accent)
+
+            buf = BytesIO()
+            canvas.save(buf, format="JPEG", quality=95, optimize=True)
+            return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    except Exception:
+        return ""
+
+def _structure_control_data_uri(input_path: str) -> str:
+    path = Path(input_path)
+    if not path.exists():
+        return ""
+    try:
+        with Image.open(path) as img:
+            img = img.convert("RGB")
+            width, height = img.size
+            target_long_side = 1536
+            scale = target_long_side / max(width, height)
+            if scale > 1:
+                new_size = (int(width * scale), int(height * scale))
+                img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+            gray = ImageOps.grayscale(img)
+            edges = gray.filter(ImageFilter.FIND_EDGES)
+            edges = ImageOps.autocontrast(edges)
+
+            # Strengthen walls, windows, pillars, and room boundaries into a clean control map.
+            edges = edges.point(lambda p: 255 if p > 32 else 0)
+            edges = edges.filter(ImageFilter.MaxFilter(3))
+            edges = ImageOps.invert(edges)
+
+            canvas = Image.merge("RGB", (edges, edges, edges))
+            draw = ImageDraw.Draw(canvas)
+            w, h = canvas.size
+            margin = max(8, int(min(w, h) * 0.02))
+            draw.rectangle([margin, margin, w - margin, h - margin], outline=(255, 0, 0), width=max(3, int(min(w, h) * 0.006)))
 
             buf = BytesIO()
             canvas.save(buf, format="JPEG", quality=95, optimize=True)
@@ -836,7 +871,8 @@ def build_doubao_payload_for_model(input_path: str, style: str, quality: str, mo
     style_detail = STYLE_DETAILS.get(style, STYLE_DETAILS["modern"])
     size = resolve_output_size(input_path, quality)
     img_data_uri = _image_data_uri(input_path)
-    control_data_uri = _control_signal_data_uri(input_path)
+    framing_data_uri = _framing_overlay_data_uri(input_path)
+    structure_data_uri = _structure_control_data_uri(input_path)
     if not img_data_uri:
         raise RuntimeError("The uploaded room image could not be read.")
     payload = {
@@ -850,11 +886,11 @@ def build_doubao_payload_for_model(input_path: str, style: str, quality: str, mo
     # overlay reinforces the original framing and room boundaries.
     if "seedream-5-0" in model_name:
         payload["image"] = img_data_uri
-        if control_data_uri:
-            payload["reference_images"] = [control_data_uri]
+        if framing_data_uri:
+            payload["reference_images"] = [framing_data_uri]
         return payload
 
-    payload["reference_images"] = [img_data_uri, control_data_uri] if control_data_uri else [img_data_uri]
+    payload["reference_images"] = [img_data_uri, structure_data_uri] if structure_data_uri else [img_data_uri]
     return payload
 
 def _is_model_limit_error(message: str) -> bool:
