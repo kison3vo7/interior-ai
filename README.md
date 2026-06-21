@@ -80,7 +80,15 @@ docker compose up --build
 - 接口域名：`https://ark.cn-beijing.volces.com`
 - 当前使用接口：`/api/v3/images/generations`
 - 当前使用模型：`doubao-seedream-5-0-260128`
+- 自动回退模型：`doubao-seedream-4-5-251128`
 - 鉴权方式：`Authorization: Bearer $ARK_API_KEY`
+
+当前后端策略：
+
+- 默认优先走 `doubao-seedream-5-0-260128`
+- 如果 5.0 触发 `SetLimitExceeded`、`服务暂停`、`安全体验模式` 等限制错误
+- 自动回退到 `doubao-seedream-4-5-251128`
+- 不改前端调用方式，不需要手动切模型
 
 ## 核心 API
 

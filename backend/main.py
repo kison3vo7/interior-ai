@@ -33,6 +33,7 @@ DATA_ROOT.mkdir(parents=True, exist_ok=True)
 ARK_API_KEY  = os.getenv("ARK_API_KEY", "")
 JWT_SECRET   = os.getenv("JWT_SECRET", "dev-secret")
 ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-260128")
+ARK_IMAGE_FALLBACK_MODEL = os.getenv("ARK_IMAGE_FALLBACK_MODEL", "doubao-seedream-4-5-251128")
 CREEM_API_KEY = os.getenv("CREEM_API_KEY", "").strip()
 CREEM_WEBHOOK_SECRET = os.getenv("CREEM_WEBHOOK_SECRET", "").strip()
 CREEM_API_BASE = os.getenv("CREEM_API_BASE", "https://api.creem.io/v1").strip().rstrip("/")
@@ -816,6 +817,9 @@ def _room_prompt(style_name: str, style_detail: str) -> str:
     )
 
 def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
+    return build_doubao_payload_for_model(input_path, style, quality, ARK_IMAGE_MODEL)
+
+def build_doubao_payload_for_model(input_path: str, style: str, quality: str, model_name: str) -> dict:
     style_name = STYLES.get(style, "现代简约")
     style_detail = STYLE_DETAILS.get(style, STYLE_DETAILS["modern"])
     size = resolve_output_size(input_path, quality)
@@ -824,7 +828,7 @@ def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
     if not img_data_uri:
         raise RuntimeError("The uploaded room image could not be read.")
     payload = {
-        "model": ARK_IMAGE_MODEL,
+        "model": model_name,
         "prompt": _room_prompt(style_name, style_detail),
         "n": 1,
         "size": size,
@@ -832,7 +836,7 @@ def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
     }
     # Seedream 5.0 can take the uploaded room image directly, while the control
     # overlay reinforces the original framing and room boundaries.
-    if "seedream-5-0" in ARK_IMAGE_MODEL:
+    if "seedream-5-0" in model_name:
         payload["image"] = img_data_uri
         if control_data_uri:
             payload["reference_images"] = [control_data_uri]
@@ -841,8 +845,18 @@ def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
     payload["reference_images"] = [img_data_uri, control_data_uri] if control_data_uri else [img_data_uri]
     return payload
 
-async def call_doubao(input_path: str, style: str, quality: str) -> str:
-    payload = build_doubao_payload(input_path, style, quality)
+def _is_model_limit_error(message: str) -> bool:
+    lowered = (message or "").lower()
+    return any(token in lowered for token in [
+        "setlimitexceeded",
+        "服务暂停",
+        "安全体验模式",
+        "模型激活页面",
+        "推理限制",
+    ])
+
+async def _call_doubao_with_model(input_path: str, style: str, quality: str, model_name: str) -> str:
+    payload = build_doubao_payload_for_model(input_path, style, quality, model_name)
     headers = {"Authorization": f"Bearer {ARK_API_KEY}", "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=120) as client:
         ref_count = len(payload.get("reference_images", []))
@@ -859,6 +873,20 @@ async def call_doubao(input_path: str, style: str, quality: str) -> str:
         if not items or not items[0].get("url"):
             raise RuntimeError(f"豆包API返回异常: {json.dumps(data, ensure_ascii=False)}")
         return items[0]["url"]
+
+async def call_doubao(input_path: str, style: str, quality: str) -> str:
+    try:
+        return await _call_doubao_with_model(input_path, style, quality, ARK_IMAGE_MODEL)
+    except RuntimeError as exc:
+        if not ARK_IMAGE_FALLBACK_MODEL or ARK_IMAGE_FALLBACK_MODEL == ARK_IMAGE_MODEL:
+            raise
+        if not _is_model_limit_error(str(exc)):
+            raise
+        print(
+            f"[doubao] primary model limited, fallback to {ARK_IMAGE_FALLBACK_MODEL} "
+            f"from {ARK_IMAGE_MODEL}"
+        )
+        return await _call_doubao_with_model(input_path, style, quality, ARK_IMAGE_FALLBACK_MODEL)
 
 async def process_job(job_id: str, input_path: str, style: str, quality: str):
     db = get_db()
