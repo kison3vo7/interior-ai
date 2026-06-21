@@ -32,8 +32,8 @@ DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
 ARK_API_KEY  = os.getenv("ARK_API_KEY", "")
 JWT_SECRET   = os.getenv("JWT_SECRET", "dev-secret")
-ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-4-5-251128")
-ARK_IMAGE_FALLBACK_MODEL = os.getenv("ARK_IMAGE_FALLBACK_MODEL", "doubao-seedream-5-0-260128")
+ARK_IMAGE_MODEL = os.getenv("ARK_IMAGE_MODEL", "doubao-seedream-5-0-260128")
+ARK_IMAGE_FALLBACK_MODEL = os.getenv("ARK_IMAGE_FALLBACK_MODEL", "doubao-seedream-4-5-251128")
 CREEM_API_KEY = os.getenv("CREEM_API_KEY", "").strip()
 CREEM_WEBHOOK_SECRET = os.getenv("CREEM_WEBHOOK_SECRET", "").strip()
 CREEM_API_BASE = os.getenv("CREEM_API_BASE", "https://api.creem.io/v1").strip().rstrip("/")
@@ -816,25 +816,6 @@ def _image_data_uri(input_path: str) -> str:
         mime = "image/png" if ext == ".png" else "image/jpeg"
         return f"data:{mime};base64,{_image_base64(input_path)}"
 
-def _image_base64_payload(input_path: str) -> str:
-    path = Path(input_path)
-    if not path.exists():
-        return ""
-    try:
-        with Image.open(path) as img:
-            img = img.convert("RGB")
-            width, height = img.size
-            target_long_side = 1536
-            scale = target_long_side / max(width, height)
-            if scale > 1:
-                new_size = (int(width * scale), int(height * scale))
-                img = img.resize(new_size, Image.Resampling.LANCZOS)
-            buf = BytesIO()
-            img.save(buf, format="JPEG", quality=95, optimize=True)
-            return base64.b64encode(buf.getvalue()).decode()
-    except Exception:
-        return _image_base64(input_path)
-
 def _normalize_uploaded_image(file: UploadFile, content: bytes) -> tuple[str, bytes]:
     filename = file.filename or ""
     suffix = Path(filename).suffix.lower()
@@ -979,7 +960,6 @@ def build_doubao_payload_for_model(input_path: str, style: str, quality: str, mo
     style_detail = STYLE_DETAILS.get(style, STYLE_DETAILS["modern"])
     size = resolve_output_size(input_path, quality)
     img_data_uri = _image_data_uri(input_path)
-    img_base64 = _image_base64_payload(input_path)
     framing_data_uri = _framing_overlay_data_uri(input_path)
     structure_data_uri = _structure_control_data_uri(input_path)
     if not img_data_uri:
@@ -991,29 +971,10 @@ def build_doubao_payload_for_model(input_path: str, style: str, quality: str, mo
         "size": size,
         "response_format": "url",
     }
-    # Seedream 4.5 preserves room structure better when the uploaded photo is
-    # sent as the subject image and the control map is only a secondary guide.
-    if "seedream-4-5" in model_name:
-        if img_base64:
-            payload["subject_reference_images"] = [
-                {"type": "subject", "image_base64": img_base64}
-            ]
-        if structure_data_uri:
-            payload["reference_images"] = [structure_data_uri]
-        elif framing_data_uri:
-            payload["reference_images"] = [framing_data_uri]
-        return payload
-
-    # Seedream 5.0 remains available as a fallback path.
     if "seedream-5-0" in model_name:
         payload["image"] = img_data_uri
-        refs = []
-        if structure_data_uri:
-            refs.append(structure_data_uri)
         if framing_data_uri:
-            refs.append(framing_data_uri)
-        if refs:
-            payload["reference_images"] = refs
+            payload["reference_images"] = [framing_data_uri]
         return payload
 
     payload["reference_images"] = [img_data_uri, structure_data_uri] if structure_data_uri else [img_data_uri]
@@ -1034,11 +995,7 @@ async def _call_doubao_with_model(input_path: str, style: str, quality: str, mod
     headers = {"Authorization": f"Bearer {ARK_API_KEY}", "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=120) as client:
         ref_count = len(payload.get("reference_images", []))
-        subject_count = len(payload.get("subject_reference_images", []))
-        print(
-            f"[doubao] generating model={payload['model']} style={style} size={payload['size']} "
-            f"image={'image' in payload} reference_images={ref_count} subject_reference_images={subject_count}"
-        )
+        print(f"[doubao] generating model={payload['model']} style={style} size={payload['size']} image={'image' in payload} reference_images={ref_count}")
         r2 = await client.post(
             "https://ark.cn-beijing.volces.com/api/v3/images/generations",
             headers=headers,
