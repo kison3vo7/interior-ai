@@ -80,6 +80,7 @@ def _seed_bundled_uploads() -> None:
 _seed_bundled_uploads()
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_ROOT)), name="uploads")
+app.mount("/static-site", StaticFiles(directory=str(ROOT_DIR), html=False), name="static-site")
 
 security = HTTPBearer(auto_error=False)
 
@@ -406,13 +407,13 @@ def home_head():
 @app.get("/admin", response_class=HTMLResponse)
 @app.get("/admin.html", response_class=HTMLResponse)
 def admin_page():
-    if ADMIN_HTML.exists():
-        resp = FileResponse(ADMIN_HTML)
-        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        resp.headers["Pragma"] = "no-cache"
-        resp.headers["Expires"] = "0"
-        return resp
-    return HTMLResponse("<h1>Admin dashboard not found.</h1>", status_code=404)
+    if not ADMIN_HTML.exists():
+        return HTMLResponse("<h1>Admin dashboard not found.</h1>", status_code=404)
+    resp = FileResponse(ADMIN_HTML)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 @app.get("/favicon.ico")
 def favicon():
