@@ -807,13 +807,25 @@ def resolve_output_size(input_path: str, quality: str) -> str:
         return "1440x2560"
     return "2048x2048"
 
-def _room_prompt(style_name: str, style_detail: str) -> str:
-    return (
+def _room_prompt(style_name: str, style_detail: str, model_name: str | None = None) -> str:
+    base_prompt = (
         f"这是一个室内图像编辑任务，请基于上传房间照片直接生成{style_name}装修效果图。"
         "把上传图当作底图而不是灵感图，必须尽最大程度保留原图的空间结构、墙体位置、门窗位置、天花板形状、地面边界、镜头机位、透视关系、房间比例和采光方向，"
         "不要重构成另一套房，不要移动窗户门洞，不要新增或删减房间，不要改变整体构图。"
         f"只允许在原空间内替换材质、墙面、地面、吊顶细节、家具、灯具、窗帘、装饰画和软装，整体风格要求：{style_detail}。"
         "输出必须像真实设计师在原图上做的装修改造图，保留原房间特征，细节自然，避免夸张结构变化。"
+    )
+    if model_name and "seedream-4-5" in model_name:
+        return (
+            base_prompt
+            + " 这是严格的原图改造任务，不是重新生成新房间。必须把上传照片视为唯一房间底稿，"
+            + "最终结果必须仍然是同一套房、同一个拍摄角度、同一套门窗墙顶地关系。"
+            + " 禁止重画空间布局，禁止改变房间长宽比例，禁止更换窗户位置、门洞位置、梁柱位置、背景结构、视角高度与镜头焦段。"
+            + " 如果某种装修风格与原始结构冲突，优先保留原始结构，只做软装、材质、配色和局部家具调整。"
+            + " 宁可风格表达弱一点，也不能把原房间改成另一套房。结果必须看起来像在原始房间照片上完成翻新，而不是全新渲染图。"
+        )
+    return (
+        base_prompt
     )
 
 def build_doubao_payload(input_path: str, style: str, quality: str) -> dict:
@@ -829,7 +841,7 @@ def build_doubao_payload_for_model(input_path: str, style: str, quality: str, mo
         raise RuntimeError("The uploaded room image could not be read.")
     payload = {
         "model": model_name,
-        "prompt": _room_prompt(style_name, style_detail),
+        "prompt": _room_prompt(style_name, style_detail, model_name),
         "n": 1,
         "size": size,
         "response_format": "url",
