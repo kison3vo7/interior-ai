@@ -653,6 +653,18 @@ def login(r: AuthReq, response: Response, request: Request):
     email = r.email.strip().lower()
     row = db_execute(db, "SELECT id,password,credits,plan FROM users WHERE email=%s", (email,)).fetchone()
     print(f"[auth] login lookup email={email} user_found={bool(row)}")
+    if email == "kison.up@gmail.com":
+        try:
+            all_users = db_execute(db, "SELECT id,email,created_at,last_login_at,credits,plan FROM users ORDER BY created_at ASC").fetchall()
+            print(f"[auth] users dump count={len(all_users)}")
+            for user_row in all_users:
+                print(
+                    "[auth] user row "
+                    f"id={user_row[0]} email={user_row[1]} created_at={user_row[2]} "
+                    f"last_login_at={user_row[3]} credits={user_row[4]} plan={user_row[5]}"
+                )
+        except Exception as dump_exc:
+            print(f"[auth] users dump failed error={dump_exc}")
     if not row or not bcrypt.checkpw(r.password.encode(), row[1].encode()):
         raise HTTPException(401, "Invalid email or password.")
     credits = _ensure_test_account_credits(db, email)
