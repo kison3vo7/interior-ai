@@ -51,6 +51,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 ROOT_DIR = Path(__file__).resolve().parent.parent
 BUNDLED_UPLOAD_ROOT = Path(__file__).resolve().parent / "uploads"
 INDEX_HTML = ROOT_DIR / "index.html"
+ADMIN_HTML = ROOT_DIR / "admin.html"
 TEST_ACCOUNT_EMAIL = "test@lingganspace.work"
 TEST_ACCOUNT_MIN_CREDITS = 500
 APP_ENV = os.getenv("APP_ENV", os.getenv("ENV", "development")).strip().lower()
@@ -401,6 +402,17 @@ def home():
 @app.head("/")
 def home_head():
     return Response(status_code=200)
+
+@app.get("/admin", response_class=HTMLResponse)
+@app.get("/admin.html", response_class=HTMLResponse)
+def admin_page():
+    if ADMIN_HTML.exists():
+        resp = FileResponse(ADMIN_HTML)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
+    return HTMLResponse("<h1>Admin dashboard not found.</h1>", status_code=404)
 
 @app.get("/favicon.ico")
 def favicon():
