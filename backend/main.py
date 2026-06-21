@@ -652,6 +652,7 @@ def login(r: AuthReq, response: Response, request: Request):
     db = get_db()
     email = r.email.strip().lower()
     row = db_execute(db, "SELECT id,password,credits,plan FROM users WHERE email=%s", (email,)).fetchone()
+    print(f"[auth] login lookup email={email} user_found={bool(row)}")
     if not row or not bcrypt.checkpw(r.password.encode(), row[1].encode()):
         raise HTTPException(401, "Invalid email or password.")
     credits = _ensure_test_account_credits(db, email)
