@@ -52,6 +52,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 BUNDLED_UPLOAD_ROOT = Path(__file__).resolve().parent / "uploads"
 INDEX_HTML = ROOT_DIR / "index.html"
 ADMIN_HTML = ROOT_DIR / "admin.html"
+PRIVACY_HTML = ROOT_DIR / "privacy-policy.html"
+TERMS_HTML = ROOT_DIR / "terms-of-service.html"
 TEST_ACCOUNT_EMAIL = "test@lingganspace.work"
 TEST_ACCOUNT_MIN_CREDITS = 500
 APP_ENV = os.getenv("APP_ENV", os.getenv("ENV", "development")).strip().lower()
@@ -80,7 +82,6 @@ def _seed_bundled_uploads() -> None:
 _seed_bundled_uploads()
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_ROOT)), name="uploads")
-app.mount("/static-site", StaticFiles(directory=str(ROOT_DIR), html=False), name="static-site")
 
 security = HTTPBearer(auto_error=False)
 
@@ -407,13 +408,35 @@ def home_head():
 @app.get("/admin", response_class=HTMLResponse)
 @app.get("/admin.html", response_class=HTMLResponse)
 def admin_page():
-    if not ADMIN_HTML.exists():
-        return HTMLResponse("<h1>Admin dashboard not found.</h1>", status_code=404)
-    resp = FileResponse(ADMIN_HTML)
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    resp.headers["Pragma"] = "no-cache"
-    resp.headers["Expires"] = "0"
-    return resp
+    if ADMIN_HTML.exists():
+        resp = FileResponse(ADMIN_HTML)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
+    return HTMLResponse("<h1>Admin dashboard not found.</h1>", status_code=404)
+
+@app.get("/privacy-policy", response_class=HTMLResponse)
+@app.get("/privacy-policy.html", response_class=HTMLResponse)
+def privacy_policy_page():
+    if PRIVACY_HTML.exists():
+        resp = FileResponse(PRIVACY_HTML)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
+    return HTMLResponse("<h1>Privacy Policy not found.</h1>", status_code=404)
+
+@app.get("/terms-of-service", response_class=HTMLResponse)
+@app.get("/terms-of-service.html", response_class=HTMLResponse)
+def terms_of_service_page():
+    if TERMS_HTML.exists():
+        resp = FileResponse(TERMS_HTML)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
+    return HTMLResponse("<h1>Terms of Service not found.</h1>", status_code=404)
 
 @app.get("/favicon.ico")
 def favicon():
