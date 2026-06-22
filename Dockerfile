@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend ./backend
 COPY index.html ./index.html
+COPY admin.html ./admin.html
 
 RUN mkdir -p /app/backend/uploads /app/backend/data
 
