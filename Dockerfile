@@ -8,6 +8,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend ./backend
 COPY index.html ./index.html
 COPY admin.html ./admin.html
+COPY privacy-policy.html ./privacy-policy.html
+COPY terms-of-service.html ./terms-of-service.html
 
 RUN mkdir -p /app/backend/uploads /app/backend/data
 
