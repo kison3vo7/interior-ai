@@ -209,10 +209,10 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       <div class="showcase-header">
         <div>
           <div class="showcase-badge">Featured makeover example</div>
-          <h2>毛坯房一键生成多种家装风格</h2>
-          <p>把真实毛坯房上传进来，AI 会沿用原始采光、窗位、梁柱和视角，快速生成不同装修方向。左侧是原始毛坯，右侧是同一空间的多套设计效果，用户一眼就能理解产品价值。</p>
+          <h2>Turn a Raw Space into Multiple Design Directions</h2>
+          <p>Upload a real unfinished room and let the AI preserve the original lighting, window placement, beams, and camera angle while generating multiple renovation concepts. The raw space stays on the left, and the styled redesigns appear on the right for an instant before-and-after story.</p>
         </div>
-        <button class="btn btn-primary" style="padding:12px 22px;font-size:15px" @click="goGenerate">上传我的毛坯房</button>
+        <button class="btn btn-primary" style="padding:12px 22px;font-size:15px" @click="goGenerate">Upload My Space</button>
       </div>
       <div class="showcase-grid">
         <div class="showcase-raw">
@@ -793,14 +793,14 @@ const app = createApp({
       showcaseRaw: {
         image: '/uploads/showcase-raw.png',
         tag: 'BEFORE · RAW SPACE',
-        title: '原始毛坯现场',
-        desc: '真实毛坯房照片，保留窗位、梁柱、地面和大开间结构。'
+        title: 'Original unfinished room',
+        desc: 'A real bare-shell interior photo with windows, beams, floor slab, and open-plan structure preserved.'
       },
       showcaseDesigns: [
-        {image:'/uploads/showcase-nordic.jpeg',tag:'Scandinavian',title:'北欧原木风',desc:'浅木色顶面与家具统一，适合打造明亮、干净、耐看的家庭日常感。'},
-        {image:'/uploads/showcase-minimal.jpeg',tag:'Minimal',title:'奶油极简风',desc:'保留大开间通透感，用柔和白调和低饱和软装做出高级留白。'},
-        {image:'/uploads/showcase-wabi.jpeg',tag:'Wabi-Sabi',title:'侘寂水泥风',desc:'混凝土质感与温润布艺结合，更适合个性化、艺术化的居住表达。'},
-        {image:'/uploads/showcase-industrial.jpeg',tag:'Industrial Loft',title:'复古工业风',desc:'深木色、吊灯和裸露顶部强化 loft 气质，适合大平层改造展示。'},
+        {image:'/uploads/showcase-nordic.jpeg',tag:'Scandinavian',title:'Nordic Wood Tone',desc:'Light oak surfaces and soft neutrals create a bright, clean family living atmosphere.'},
+        {image:'/uploads/showcase-minimal.jpeg',tag:'Minimal',title:'Cream Minimalism',desc:'Keeps the spacious open layout while using warm whites and low-saturation styling for a refined calm look.'},
+        {image:'/uploads/showcase-wabi.jpeg',tag:'Wabi-Sabi',title:'Concrete Wabi-Sabi',desc:'Raw mineral textures mixed with soft furnishings deliver a more artistic and personality-led living mood.'},
+        {image:'/uploads/showcase-industrial.jpeg',tag:'Industrial Loft',title:'Vintage Industrial Loft',desc:'Dark wood, statement lighting, and an exposed ceiling push the loft feeling for large open-plan interiors.'},
       ],
     }
   },
