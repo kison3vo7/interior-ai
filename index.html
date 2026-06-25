@@ -9,28 +9,46 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
 a{cursor:pointer;text-decoration:none;color:inherit}
-/* NAV */
 nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;gap:16px}
 .logo{font-size:17px;font-weight:800;color:var(--p);white-space:nowrap}
 .nav-links{display:flex;gap:24px;font-size:14px;color:var(--muted)}
 .nav-links a:hover{color:var(--p)}
 .nav-right{display:flex;gap:8px;align-items:center;flex-shrink:0}
 .credits-tag{font-size:13px;font-weight:700;color:var(--p);background:#ede9fe;padding:4px 10px;border-radius:100px}
-/* BUTTONS */
 .btn{padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s}
 .btn-primary{background:var(--p);color:#fff}.btn-primary:hover{background:var(--p2)}
 .btn-green{background:var(--g);color:#fff}.btn-green:hover{background:#059669}
 .btn-ghost{background:none;color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--p);color:var(--p)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-/* LAYOUT */
 .container{max-width:960px;margin:0 auto;padding:32px 20px}
 .card{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:24px}
-/* HERO */
 .hero{text-align:center;padding:72px 20px 48px;background:linear-gradient(180deg,#f0f0ff,var(--bg))}
 .hero h1{font-size:clamp(28px,5vw,52px);font-weight:800;line-height:1.15;margin-bottom:14px}
 .hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--p),#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .hero p{color:var(--muted);font-size:17px;max-width:760px;margin:0 auto 28px}
-/* APP */
+.showcase-shell{max-width:1180px;margin:0 auto;padding:0 20px 56px}
+.showcase-band{background:#fff;border:1px solid rgba(99,102,241,.14);box-shadow:0 28px 60px rgba(15,23,42,.08);border-radius:30px;padding:28px;position:relative;overflow:hidden}
+.showcase-band::before{content:'';position:absolute;inset:-30% auto auto -5%;width:260px;height:260px;background:radial-gradient(circle,rgba(99,102,241,.14),transparent 68%);pointer-events:none}
+.showcase-band::after{content:'';position:absolute;inset:auto -6% -28% auto;width:320px;height:320px;background:radial-gradient(circle,rgba(16,185,129,.12),transparent 68%);pointer-events:none}
+.showcase-header{position:relative;z-index:1;display:flex;justify-content:space-between;gap:18px;align-items:end;margin-bottom:22px;flex-wrap:wrap}
+.showcase-header h2{font-size:30px;line-height:1.15;margin-bottom:8px}
+.showcase-header p{max-width:720px;font-size:15px;color:var(--muted)}
+.showcase-badge{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#4338ca;background:#eef2ff;padding:7px 12px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em}
+.showcase-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.18fr 1fr;gap:18px;align-items:stretch}
+.showcase-raw{position:relative;display:flex;flex-direction:column;min-height:100%}
+.showcase-raw-frame{position:relative;overflow:hidden;border-radius:24px;border:1px solid #dbe4f0;background:#d9dfe8;min-height:100%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
+.showcase-raw-frame img{width:100%;height:100%;min-height:540px;display:block;object-fit:cover}
+.showcase-raw-label{position:absolute;top:16px;left:16px;background:rgba(15,23,42,.84);color:#fff;font-size:12px;font-weight:800;padding:8px 12px;border-radius:999px;letter-spacing:.04em}
+.showcase-raw-note{position:absolute;left:18px;right:18px;bottom:18px;display:flex;justify-content:space-between;gap:14px;align-items:end;flex-wrap:wrap;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.7);border-radius:18px;padding:14px 16px}
+.showcase-raw-note strong{display:block;font-size:15px;margin-bottom:4px}
+.showcase-raw-note span{font-size:13px;color:var(--muted)}
+.showcase-designs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.showcase-card{background:#fff;border:1px solid #e5e7eb;border-radius:22px;overflow:hidden;box-shadow:0 14px 34px rgba(15,23,42,.06);display:flex;flex-direction:column}
+.showcase-card img{width:100%;height:210px;object-fit:cover;display:block}
+.showcase-meta{padding:14px 15px 16px}
+.showcase-meta strong{display:block;font-size:16px;margin-bottom:5px}
+.showcase-meta p{font-size:13px;color:var(--muted)}
+.showcase-tone{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--p);background:#eef2ff;padding:6px 10px;border-radius:999px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
 .step-tabs{display:flex;gap:8px;margin-bottom:20px}
 .step-tab{flex:1;padding:10px 6px;border-radius:10px;text-align:center;font-size:13px;font-weight:600;border:2px solid var(--border);color:var(--muted);cursor:pointer;transition:.15s}
 .step-tab.active{border-color:var(--p);color:var(--p);background:#ede9fe}
@@ -48,7 +66,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .result-item{border-radius:10px;overflow:hidden;position:relative}
 .result-item img{width:100%;height:220px;object-fit:cover;display:block}
 .result-label{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:100px}
-/* HISTORY */
 .history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
 .history-card{background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
 .history-card img{width:100%;height:140px;object-fit:cover}
@@ -63,7 +80,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .admin-table th{background:#f8fafc;border-top:none;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .admin-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .admin-actions input{padding:8px 10px;border:1px solid var(--border);border-radius:8px;width:110px}
-/* PRICING */
 .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 .plan{border:2px solid var(--border);border-radius:14px;padding:20px;transition:.15s;cursor:pointer}
 .plan:hover,.plan.featured{border-color:var(--p)}
@@ -112,7 +128,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .footer-links a{font-size:13px;color:#cbd5e1}
 .footer-links a:hover{color:#fff}
 .footer-support{font-size:13px;color:#94a3b8;margin-top:10px}
-/* OVERLAY / MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
 .modal h2{font-size:20px;font-weight:800;margin-bottom:20px}
@@ -125,16 +140,13 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .field textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:.15s;min-height:88px;resize:vertical;font-family:inherit}
 .field input:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
 .field textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
-/* PROGRESS */
 .prog-wrap{margin:12px 0}
 .prog-label{font-size:13px;color:var(--muted);text-align:center;margin-bottom:6px}
 .prog-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
 .prog-fill{height:100%;background:linear-gradient(90deg,var(--p),#a855f7);border-radius:3px;transition:width .4s}
-/* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;z-index:200;background:#1e293b;color:#fff;padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;pointer-events:none;animation:fadeup .3s}
 .toast.error{background:#ef4444}
 @keyframes fadeup{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-/* PAY */
 .pay-box{text-align:center;padding:20px 0}
 .pay-qr-wrap{display:flex;justify-content:center;margin:14px 0}
 .pay-qr-img{width:220px;height:220px;border-radius:14px;background:#fff;border:1px solid var(--border);padding:10px;object-fit:contain}
@@ -146,14 +158,14 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
 .legal-card h3{font-size:16px;margin-bottom:8px}
 .legal-card p,.legal-card li{font-size:13px;color:var(--muted)}
 .legal-card ul{padding-left:18px}
-@media(max-width:860px){.info-grid,.audit-strip{grid-template-columns:1fr}}
-@media(max-width:600px){.styles-grid{grid-template-columns:repeat(2,1fr)}.result-grid{grid-template-columns:1fr}.nav-links{display:none}.hero{padding:56px 20px 40px}.section{padding:48px 16px}.info-row{grid-template-columns:1fr}.site-footer .top{flex-direction:column}}
+@media(max-width:1024px){.showcase-grid{grid-template-columns:1fr}.showcase-raw-frame img{min-height:420px}}
+@media(max-width:860px){.info-grid,.audit-strip{grid-template-columns:1fr}.showcase-band{padding:22px}.showcase-header h2{font-size:26px}}
+@media(max-width:640px){.showcase-shell{padding:0 14px 42px}.showcase-band{padding:18px;border-radius:24px}.showcase-designs{grid-template-columns:1fr}.showcase-raw-frame img{min-height:300px}.showcase-header p{font-size:14px}}
+@media(max-width:600px){.styles-grid{grid-template-columns:repeat(2,1fr)}.result-grid{grid-template-columns:1fr}.nav-links{display:none}.hero{padding:56px 20px 34px}.section{padding:48px 16px}.info-row{grid-template-columns:1fr}.site-footer .top{flex-direction:column}}
 </style>
 </head>
 <body>
 <div id="app">
-
-<!-- NAV -->
 <nav>
   <div class="logo">🏠 Linggan Space AI</div>
   <div class="nav-links">
@@ -175,7 +187,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
 </nav>
 
-<!-- ===== HOME PAGE ===== -->
 <template v-if="page==='home'">
   <div class="hero">
     <p style="display:inline-flex;align-items:center;gap:6px;background:#ede9fe;color:var(--p);font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px;margin-bottom:18px">🚀 Linggan Space AI · 12 styles · 2 free generations</p>
@@ -192,6 +203,45 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       </div>
     </div>
   </div>
+
+  <section class="showcase-shell">
+    <div class="showcase-band">
+      <div class="showcase-header">
+        <div>
+          <div class="showcase-badge">Featured makeover example</div>
+          <h2>毛坯房一键生成多种家装风格</h2>
+          <p>把真实毛坯房上传进来，AI 会沿用原始采光、窗位、梁柱和视角，快速生成不同装修方向。左侧是原始毛坯，右侧是同一空间的多套设计效果，用户一眼就能理解产品价值。</p>
+        </div>
+        <button class="btn btn-primary" style="padding:12px 22px;font-size:15px" @click="goGenerate">上传我的毛坯房</button>
+      </div>
+      <div class="showcase-grid">
+        <div class="showcase-raw">
+          <div class="showcase-raw-frame">
+            <img :src="showcaseRaw.image" :alt="showcaseRaw.title">
+            <span class="showcase-raw-label">{{ showcaseRaw.tag }}</span>
+            <div class="showcase-raw-note">
+              <div>
+                <strong>{{ showcaseRaw.title }}</strong>
+                <span>{{ showcaseRaw.desc }}</span>
+              </div>
+              <div class="credits-tag" style="background:#eef2ff">保留结构 · 快速出图</div>
+            </div>
+          </div>
+        </div>
+        <div class="showcase-designs">
+          <article class="showcase-card" v-for="item in showcaseDesigns" :key="item.title">
+            <img :src="item.image" :alt="item.title">
+            <div class="showcase-meta">
+              <span class="showcase-tone">{{ item.tag }}</span>
+              <strong>{{ item.title }}</strong>
+              <p>{{ item.desc }}</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section section-light">
     <div class="section-title">
       <h2>What Linggan Space AI Offers</h2>
@@ -281,7 +331,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </footer>
 </template>
 
-<!-- ===== GENERATE PAGE ===== -->
 <template v-if="page==='generate'">
   <div class="container">
     <div class="step-tabs">
@@ -289,8 +338,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       <div class="step-tab" :class="{active:step>=2}" @click="step>=2&&(step=2)">② Style</div>
       <div class="step-tab" :class="{active:step>=3}">③ Generate</div>
     </div>
-
-    <!-- Step 1: Upload -->
     <div v-if="step===1" class="card">
       <div v-if="!upload" class="upload-area" @click="$refs.fi.click()" @dragover.prevent @drop.prevent="handleFileDrop">
         <div style="font-size:40px;margin-bottom:12px">📸</div>
@@ -309,8 +356,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
       <div v-if="loading" style="text-align:center;padding:12px;color:var(--muted);font-size:14px">Uploading...</div>
       <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:14px;font-size:15px" :disabled="!upload||loading" @click="step=2">Next: Choose Style →</button>
     </div>
-
-    <!-- Step 2: Style -->
     <div v-if="step===2" class="card">
       <div style="font-weight:700;margin-bottom:14px">Choose a design style</div>
       <div class="styles-grid">
@@ -324,8 +369,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
         <button class="btn btn-primary" style="flex:2;padding:12px;font-size:15px" :disabled="!selectedStyle" @click="step=3">Next: Generate →</button>
       </div>
     </div>
-
-    <!-- Step 3: Generate -->
     <div v-if="step===3" class="card">
       <div v-if="!job">
         <div style="background:#f8fafc;border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -339,7 +382,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
           </button>
         </div>
       </div>
-      <!-- Processing -->
       <div v-else-if="job.status==='processing'||job.status==='pending'">
         <div class="prog-wrap">
           <div class="prog-label">{{ progLabel }}</div>
@@ -347,7 +389,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
         </div>
         <div style="text-align:center;font-size:13px;color:var(--muted);margin-top:8px">Your AI redesign is being generated. This usually takes 10–30 seconds.</div>
       </div>
-      <!-- Done -->
       <div v-else-if="job.status==='done'">
         <div class="result-grid">
           <div class="result-item">
@@ -365,7 +406,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
         </div>
         <button class="btn btn-ghost" style="width:100%;margin-top:8px" @click="goHistory">View History →</button>
       </div>
-      <!-- Failed -->
       <div v-else-if="job.status==='failed'" style="text-align:center;padding:20px">
         <div style="font-size:36px;margin-bottom:12px">⚠️</div>
         <div style="color:#ef4444;font-weight:700;margin-bottom:8px">Generation Failed</div>
@@ -376,7 +416,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
 </template>
 
-<!-- ===== HISTORY PAGE ===== -->
 <template v-if="page==='history'">
   <div class="container">
     <h2 style="font-size:22px;font-weight:800;margin-bottom:20px">Generation History</h2>
@@ -395,7 +434,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
 </template>
 
-<!-- ===== BILLING PAGE ===== -->
 <template v-if="page==='billing'">
   <div class="container">
     <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">Billing History</h2>
@@ -430,7 +468,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
 </template>
 
-<!-- ===== PRICING PAGE ===== -->
 <template v-if="page==='pricing'">
   <div class="container">
     <div style="text-align:center;margin-bottom:36px">
@@ -451,7 +488,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
 </template>
 
-<!-- ===== AUTH MODAL ===== -->
 <div class="overlay" v-if="modal==='auth'" @click.self="modal=null">
   <div class="modal">
     <div class="tab-btns">
@@ -481,7 +517,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
 </div>
 
-<!-- ===== PAYMENT MODAL ===== -->
 <div class="overlay" v-if="modal==='payment'" @click.self="modal=null">
   <div class="modal">
     <h2>Choose a plan</h2>
@@ -502,7 +537,6 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
 </div>
 
-<!-- ===== ORDER PAY MODAL ===== -->
 <div class="overlay" v-if="modal==='order'" @click.self="closeOrderModal">
   <div class="modal" style="text-align:center">
     <h2>Secure Checkout</h2>
@@ -530,11 +564,9 @@ nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-f
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" :class="{error:toastType==='error'}" v-if="toastMsg">{{ toastMsg }}</div>
 
-</div><!-- #app -->
-
+</div>
 <script>
 async function ensureVueLoaded() {
   if (window.Vue?.createApp) return window.Vue;
@@ -557,12 +589,10 @@ const API_BASE = window.__API__ || (
     : (location.hostname === 'localhost' ? 'http://localhost:8000' : '')
 );
 const IS_LOCAL_DEMO_ALLOWED = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-let DEMO_MODE = false; // only auto-set for local/offline preview
+let DEMO_MODE = false;
 const ORDER_STORAGE_KEY = 'lkj_pending_order_v2';
 const ORDER_STORAGE_VERSION = '2026-06-20-creem-live';
 const ACCOUNT_STORAGE_KEY = 'lkj_account';
-
-// Demo state (in-memory)
 const _db = { users:{}, pollCount:{}, orders:{} };
 const DEMO_IMGS = {
   modern:     'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&auto=format',
@@ -577,7 +607,6 @@ const DEMO_CHECKOUT_URL = 'https://creem.io/aikison0620';
 async function demoReq(path, opts={}) {
   await new Promise(r=>setTimeout(r,600));
   const body = opts.body && !(opts.body instanceof FormData) ? JSON.parse(opts.body) : {};
-
   if (path.includes('/auth/register')) {
     if (_db.users[body.email]) throw new Error('Email already registered.');
     _db.users[body.email] = {password:body.password, credits:2};
@@ -714,10 +743,10 @@ const app = createApp({
       authError: '',
       form: { email: '', password: '', password2: '' },
       step: 1,
-      upload: null,       // {previewUrl, fileId}
+      upload: null,
       sampleUpload: null,
       selectedStyle: null,
-      job: null,          // {job_id, status, output_url, error}
+      job: null,
       history: [],
       billingHistory: [],
       order: null,
@@ -729,37 +758,49 @@ const app = createApp({
       progPct: 0,
       progLabel: 'Analyzing room structure...',
       styles: [
-        {key:'modern',   name:'Modern Minimalist', icon:'🪑', bg:'linear-gradient(135deg,#f1f5f9,#e2e8f0)'},
-        {key:'nordic',   name:'Scandinavian', icon:'🌿', bg:'linear-gradient(135deg,#fef9ee,#fde68a)'},
-        {key:'chinese',  name:'New Chinese',   icon:'🏮', bg:'linear-gradient(135deg,#fff7ed,#fed7aa)'},
-        {key:'luxury',   name:'Light Luxury',   icon:'💎', bg:'linear-gradient(135deg,#fdf4ff,#e9d5ff)'},
-        {key:'industrial',name:'Industrial',  icon:'🔩', bg:'linear-gradient(135deg,#f1f5f9,#cbd5e1)'},
-        {key:'american', name:'American Classic', icon:'🌻', bg:'linear-gradient(135deg,#f0fdf4,#bbf7d0)'},
-        {key:'cream',    name:'Cream',   icon:'🍦', bg:'linear-gradient(135deg,#fff7ed,#fde7d3)'},
-        {key:'wabisabi', name:'Wabi-Sabi',   icon:'🪨', bg:'linear-gradient(135deg,#f5f5f4,#d6d3d1)'},
-        {key:'wood',     name:'Natural Wood',   icon:'🪵', bg:'linear-gradient(135deg,#fef3c7,#d6ad60)'},
-        {key:'french',   name:'Modern French', icon:'🕯️', bg:'linear-gradient(135deg,#fff1f2,#fecdd3)'},
-        {key:'midcentury', name:'Mid-Century', icon:'🛋️', bg:'linear-gradient(135deg,#f5f5dc,#c4a484)'},
-        {key:'minimal',  name:'Minimalist',   icon:'⬜', bg:'linear-gradient(135deg,#f8fafc,#e5e7eb)'},
+        {key:'modern',name:'Modern Minimalist',icon:'🪑',bg:'linear-gradient(135deg,#f1f5f9,#e2e8f0)'},
+        {key:'nordic',name:'Scandinavian',icon:'🌿',bg:'linear-gradient(135deg,#fef9ee,#fde68a)'},
+        {key:'chinese',name:'New Chinese',icon:'🏮',bg:'linear-gradient(135deg,#fff7ed,#fed7aa)'},
+        {key:'luxury',name:'Light Luxury',icon:'💎',bg:'linear-gradient(135deg,#fdf4ff,#e9d5ff)'},
+        {key:'industrial',name:'Industrial',icon:'🔩',bg:'linear-gradient(135deg,#f1f5f9,#cbd5e1)'},
+        {key:'american',name:'American Classic',icon:'🌻',bg:'linear-gradient(135deg,#f0fdf4,#bbf7d0)'},
+        {key:'cream',name:'Cream',icon:'🍦',bg:'linear-gradient(135deg,#fff7ed,#fde7d3)'},
+        {key:'wabisabi',name:'Wabi-Sabi',icon:'🪨',bg:'linear-gradient(135deg,#f5f5f4,#d6d3d1)'},
+        {key:'wood',name:'Natural Wood',icon:'🪵',bg:'linear-gradient(135deg,#fef3c7,#d6ad60)'},
+        {key:'french',name:'Modern French',icon:'🕯️',bg:'linear-gradient(135deg,#fff1f2,#fecdd3)'},
+        {key:'midcentury',name:'Mid-Century',icon:'🛋️',bg:'linear-gradient(135deg,#f5f5dc,#c4a484)'},
+        {key:'minimal',name:'Minimalist',icon:'⬜',bg:'linear-gradient(135deg,#f8fafc,#e5e7eb)'},
       ],
       chargePlans: [
-        {id:'c10',  name:'Starter Pack',  desc:'Perfect for first-time users',    price:5.99,  credits:13},
-        {id:'c50',  name:'Monthly',    desc:'Best for active home projects',price:19.99,  credits:78},
-        {id:'c200', name:'Quarterly',    desc:'Built for ongoing design work',price:49.99,credits:260},
-        {id:'c500', name:'Pro Annual',    desc:'For professionals and heavy users',price:199.99,credits:2600},
+        {id:'c10',name:'Starter Pack',desc:'Perfect for first-time users',price:5.99,credits:13},
+        {id:'c50',name:'Monthly',desc:'Best for active home projects',price:19.99,credits:78},
+        {id:'c200',name:'Quarterly',desc:'Built for ongoing design work',price:49.99,credits:260},
+        {id:'c500',name:'Pro Annual',desc:'For professionals and heavy users',price:199.99,credits:2600},
       ],
       pricingPlans: [
-        {id:'free', name:'Free Trial', price:'$0', unit:'one-time', desc:'2 free generations when you sign up', features:['2 generations','Email account','Basic history'], cta:'Start free', featured:false},
-        {id:'c10',  name:'Starter Pack',   price:'$5.99', unit:'one-time', desc:'Start small and upgrade anytime',  features:['13 generations','High-resolution output','Watermark-free downloads'], cta:'Buy now', featured:false},
-        {id:'c50',  name:'Monthly',   price:'$19.99', unit:'month',   desc:'Best for active renovation projects',features:['78 generations / month','Priority rendering','Billing history'], cta:'Subscribe', featured:true},
-        {id:'c200', name:'Quarterly',   price:'$49.99',unit:'quarter',   desc:'Better value for longer projects', features:['260 generations / quarter','Priority rendering','Longer billing history','Multi-room workflow'], cta:'Subscribe', featured:false},
-        {id:'c500', name:'Pro Annual',   price:'$199.99',unit:'year',   desc:'Built for power users and professionals', features:['2600 generations / year','Priority access','Extended usage capacity','Team-ready volume'], cta:'Subscribe', featured:false},
+        {id:'free',name:'Free Trial',price:'$0',unit:'one-time',desc:'2 free generations when you sign up',features:['2 generations','Email account','Basic history'],cta:'Start free',featured:false},
+        {id:'c10',name:'Starter Pack',price:'$5.99',unit:'one-time',desc:'Start small and upgrade anytime',features:['13 generations','High-resolution output','Watermark-free downloads'],cta:'Buy now',featured:false},
+        {id:'c50',name:'Monthly',price:'$19.99',unit:'month',desc:'Best for active renovation projects',features:['78 generations / month','Priority rendering','Billing history'],cta:'Subscribe',featured:true},
+        {id:'c200',name:'Quarterly',price:'$49.99',unit:'quarter',desc:'Better value for longer projects',features:['260 generations / quarter','Priority rendering','Longer billing history','Multi-room workflow'],cta:'Subscribe',featured:false},
+        {id:'c500',name:'Pro Annual',price:'$199.99',unit:'year',desc:'Built for power users and professionals',features:['2600 generations / year','Priority access','Extended usage capacity','Team-ready volume'],cta:'Subscribe',featured:false},
       ],
       caseStudies: [
-        {title:'Living room concept', desc:'Compare modern, cream, and luxury directions while keeping the original layout and lighting.', image:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=900&auto=format&fit=crop'},
-        {title:'Bedroom redesign', desc:'Generate bedroom concepts that stay closer to the original bed wall, walkway, and cabinet placement.', image:'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=900&auto=format&fit=crop&sat=-20'},
-        {title:'Dining area preview', desc:'Explore cabinet layout, lighting mood, and palette direction before starting a full renovation.', image:'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=900&auto=format&fit=crop'},
-        {title:'Study or guest room update', desc:'Useful for tighter layouts where storage, desk placement, and flexibility matter most.', image:'https://images.unsplash.com/photo-1494526585095-c41746248156?w=900&auto=format&fit=crop'},
+        {title:'Living room concept',desc:'Compare modern, cream, and luxury directions while keeping the original layout and lighting.',image:'/uploads/showcase-nordic.jpeg'},
+        {title:'Bedroom redesign',desc:'Generate bedroom concepts that stay closer to the original bed wall, walkway, and cabinet placement.',image:'/uploads/showcase-minimal.jpeg'},
+        {title:'Dining area preview',desc:'Explore cabinet layout, lighting mood, and palette direction before starting a full renovation.',image:'/uploads/showcase-industrial.jpeg'},
+        {title:'Study or guest room update',desc:'Useful for tighter layouts where storage, desk placement, and flexibility matter most.',image:'/uploads/showcase-wabi.jpeg'},
+      ],
+      showcaseRaw: {
+        image: '/uploads/showcase-raw.png',
+        tag: 'BEFORE · RAW SPACE',
+        title: '原始毛坯现场',
+        desc: '真实毛坯房照片，保留窗位、梁柱、地面和大开间结构。'
+      },
+      showcaseDesigns: [
+        {image:'/uploads/showcase-nordic.jpeg',tag:'Scandinavian',title:'北欧原木风',desc:'浅木色顶面与家具统一，适合打造明亮、干净、耐看的家庭日常感。'},
+        {image:'/uploads/showcase-minimal.jpeg',tag:'Minimal',title:'奶油极简风',desc:'保留大开间通透感，用柔和白调和低饱和软装做出高级留白。'},
+        {image:'/uploads/showcase-wabi.jpeg',tag:'Wabi-Sabi',title:'侘寂水泥风',desc:'混凝土质感与温润布艺结合，更适合个性化、艺术化的居住表达。'},
+        {image:'/uploads/showcase-industrial.jpeg',tag:'Industrial Loft',title:'复古工业风',desc:'深木色、吊灯和裸露顶部强化 loft 气质，适合大平层改造展示。'},
       ],
     }
   },
@@ -771,15 +812,10 @@ const app = createApp({
     this.ensureSampleUpload();
   },
   methods: {
-    async bootstrapSession() {
-      await this.syncCurrentUser();
-    },
+    async bootstrapSession() { await this.syncCurrentUser(); },
     async syncCurrentUser() {
       const token = localStorage.getItem('lkj_token');
-      if (!token) {
-        await this.tryAutoLogin();
-        return;
-      }
+      if (!token) { await this.tryAutoLogin(); return; }
       await this.refreshCurrentUser();
     },
     persistPendingOrder() {
@@ -805,15 +841,9 @@ const app = createApp({
         status: d?.status || fallback.status || 'pending',
       };
     },
-    clearPendingOrder() {
-      localStorage.removeItem(ORDER_STORAGE_KEY);
-    },
-    cancelPaymentPolling() {
-      this.orderPollingToken += 1;
-    },
-    saveAccount(email, password) {
-      localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify({ email, password }));
-    },
+    clearPendingOrder() { localStorage.removeItem(ORDER_STORAGE_KEY); },
+    cancelPaymentPolling() { this.orderPollingToken += 1; },
+    saveAccount(email, password) { localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify({ email, password })); },
     restoreSavedAccount() {
       try {
         const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
@@ -825,17 +855,9 @@ const app = createApp({
     async tryAutoLogin() {
       try {
         const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
-        if (!raw) {
-          this.user = null;
-          localStorage.removeItem('lkj_user');
-          return;
-        }
+        if (!raw) { this.user = null; localStorage.removeItem('lkj_user'); return; }
         const saved = JSON.parse(raw);
-        if (!saved?.email || !saved?.password) {
-          this.user = null;
-          localStorage.removeItem('lkj_user');
-          return;
-        }
+        if (!saved?.email || !saved?.password) { this.user = null; localStorage.removeItem('lkj_user'); return; }
         let d;
         try {
           d = await req('/api/auth/login', {
@@ -872,10 +894,7 @@ const app = createApp({
         localStorage.setItem('lkj_user', JSON.stringify(this.user));
       } catch (e) {
         const token = localStorage.getItem('lkj_token');
-        if (!token) {
-          await this.tryAutoLogin();
-          return;
-        }
+        if (!token) { await this.tryAutoLogin(); return; }
         console.warn('refreshCurrentUser failed', e);
       }
     },
@@ -885,10 +904,7 @@ const app = createApp({
         const raw = localStorage.getItem(ORDER_STORAGE_KEY);
         if (!raw) return;
         const saved = JSON.parse(raw);
-        if (saved?.version !== ORDER_STORAGE_VERSION) {
-          this.clearPendingOrder();
-          return;
-        }
+        if (saved?.version !== ORDER_STORAGE_VERSION) { this.clearPendingOrder(); return; }
         if (!saved?.order_id) return;
         this.restoreOrder(saved.order_id, saved);
       } catch {
@@ -921,8 +937,7 @@ const app = createApp({
         this.page='generate';
       } catch(e) {
         this.authError = (e.message==='Failed to fetch'||e.message.includes('Load failed')) ? 'Unable to reach the server. Please make sure the backend is running.' : e.message;
-      }
-      finally { this.loading=false; }
+      } finally { this.loading=false; }
     },
     logout() {
       req('/api/auth/logout', { method:'POST' }).catch(()=>{});
@@ -930,10 +945,7 @@ const app = createApp({
       this.user=null; this.page='home'; this.toast('You have been logged out.');
     },
     async goGenerate() {
-      if (!this.user || !localStorage.getItem('lkj_token')) {
-        this.openAuth('login');
-        return;
-      }
+      if (!this.user || !localStorage.getItem('lkj_token')) { this.openAuth('login'); return; }
       await this.syncCurrentUser();
       this.page='generate';
       this.step=1;
@@ -1072,16 +1084,11 @@ const app = createApp({
       }
       finally { this.loading=false; }
     },
-    isMobileClient() {
-      return /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent || '');
-    },
+    isMobileClient() { return /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent || ''); },
     async openPayUrl() {
       if (!this.order?.order_id) return;
       const url = this.order?.checkout_url || this.order?.pay_url;
-      if (url) {
-        window.location.href = url;
-        return;
-      }
+      if (url) { window.location.href = url; return; }
       await this.refreshOrderStatus(this.order.order_id);
     },
     async fetchOrderDetails(orderId) {
@@ -1141,9 +1148,7 @@ const app = createApp({
         try {
           if (token !== this.orderPollingToken) return;
           const paid = await this.refreshOrderStatus(orderId);
-          if (paid) {
-            return;
-          }
+          if (paid) return;
         } catch {}
       }
     },
@@ -1151,9 +1156,7 @@ const app = createApp({
       const params = new URLSearchParams(location.search);
       const orderId = params.get('order_id') || params.get('orderId');
       if (!orderId) return;
-      if (this.user) {
-        this.restoreOrder(orderId, this.order || {});
-      }
+      if (this.user) { this.restoreOrder(orderId, this.order || {}); }
       params.delete('payment');
       params.delete('order_id');
       params.delete('orderId');
