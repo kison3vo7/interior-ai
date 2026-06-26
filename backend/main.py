@@ -4,6 +4,7 @@ from pathlib import Path
 from io import BytesIO
 from contextlib import contextmanager
 import shutil
+from typing import Any
 
 import httpx, bcrypt, jwt
 import psycopg
@@ -54,6 +55,7 @@ INDEX_HTML = ROOT_DIR / "index.html"
 ADMIN_HTML = ROOT_DIR / "admin.html"
 PRIVACY_HTML = ROOT_DIR / "privacy-policy.html"
 TERMS_HTML = ROOT_DIR / "terms-of-service.html"
+ACCEPTABLE_USE_HTML = ROOT_DIR / "acceptable-use-policy.html"
 TEST_ACCOUNT_EMAIL = "test@lingganspace.work"
 TEST_ACCOUNT_MIN_CREDITS = 500
 APP_ENV = os.getenv("APP_ENV", os.getenv("ENV", "development")).strip().lower()
@@ -438,6 +440,17 @@ def terms_of_service_page():
         return resp
     return HTMLResponse("<h1>Terms of Service not found.</h1>", status_code=404)
 
+@app.get("/acceptable-use-policy", response_class=HTMLResponse)
+@app.get("/acceptable-use-policy.html", response_class=HTMLResponse)
+def acceptable_use_policy_page():
+    if ACCEPTABLE_USE_HTML.exists():
+        resp = FileResponse(ACCEPTABLE_USE_HTML)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
+    return HTMLResponse("<h1>Acceptable Use Policy not found.</h1>", status_code=404)
+
 @app.get("/favicon.ico")
 def favicon():
     # Return a tiny empty icon instead of a 404 to keep browser console clean.
@@ -550,6 +563,61 @@ def _creem_headers() -> dict:
         "x-api-key": CREEM_API_KEY,
         "Content-Type": "application/json",
     }
+
+def _moderation_prompt_for_generation(style: str) -> str:
+    style_name = STYLES.get(style, STYLES["modern"])
+    style_detail = STYLE_DETAILS.get(style, STYLE_DETAILS["modern"])
+    return _room_prompt(style_name, style_detail, ARK_IMAGE_MODEL)
+
+def _extract_creem_moderation_decision(data: Any) -> str:
+    if isinstance(data, dict):
+        decision = data.get("decision")
+        if isinstance(decision, str):
+            return decision.strip().lower()
+    return ""
+
+async def _creem_screen_prompt(prompt: str, external_id: str) -> dict:
+    if not CREEM_API_KEY:
+        raise HTTPException(503, "Content moderation is not configured.")
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"{CREEM_API_BASE}/moderation/prompt",
+                headers=_creem_headers(),
+                json={"prompt": prompt, "external_id": external_id},
+            )
+    except httpx.HTTPError as exc:
+        print(f"[creem] moderation request failed external_id={external_id} error={exc}", flush=True)
+        raise HTTPException(503, "Content moderation is temporarily unavailable.")
+    if not resp.is_success:
+        detail = resp.text.strip() or resp.reason_phrase
+        print(
+            f"[creem] moderation failed external_id={external_id} status={resp.status_code} body={detail}",
+            flush=True,
+        )
+        raise HTTPException(503, "Content moderation is temporarily unavailable.")
+    data = resp.json()
+    decision = _extract_creem_moderation_decision(data)
+    if decision not in {"allow", "deny", "flag"}:
+        print(
+            f"[creem] moderation invalid decision external_id={external_id} data={json.dumps(data, ensure_ascii=False)}",
+            flush=True,
+        )
+        raise HTTPException(503, "Content moderation is temporarily unavailable.")
+    print(f"[creem] moderation decision={decision} external_id={external_id}", flush=True)
+    return data
+
+async def _ensure_generation_allowed_by_creem(style: str, file_id: str, uid: Any) -> None:
+    moderation = await _creem_screen_prompt(
+        _moderation_prompt_for_generation(style),
+        external_id=f"generate:{uid}:{file_id}",
+    )
+    decision = _extract_creem_moderation_decision(moderation)
+    if decision in {"deny", "flag"}:
+        raise HTTPException(
+            400,
+            "This request could not be processed because it may violate our content safety policy.",
+        )
 
 async def _creem_create_checkout(order_id: str, user: tuple, plan_id: str, plan: dict) -> dict:
     if not _creem_enabled():
@@ -1093,6 +1161,7 @@ async def generate(file_id: str, req: GenReq, bg: BackgroundTasks, uid=Depends(c
     input_path = str(UPLOAD_DIR / file_id)
     if not Path(input_path).exists():
         raise HTTPException(404, "图片不存在")
+    await _ensure_generation_allowed_by_creem(req.style, file_id, uid)
     db_execute(db, "UPDATE users SET credits=credits-1 WHERE id=%s", (uid,)); db.commit()
     job_id = str(uuid.uuid4())
     db_execute(db, "INSERT INTO jobs VALUES(%s,%s,%s,%s,%s,%s,%s,%s)",
