@@ -10,6 +10,7 @@ COPY backend ./backend
 COPY index.html ./index.html
 COPY privacy-policy.html ./privacy-policy.html
 COPY terms-of-service.html ./terms-of-service.html
+COPY acceptable-use-policy.html ./acceptable-use-policy.html
 
 RUN mkdir -p /app/backend/uploads /app/backend/data
 
