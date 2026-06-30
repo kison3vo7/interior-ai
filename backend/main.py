@@ -5,6 +5,7 @@ from io import BytesIO
 from contextlib import contextmanager
 import shutil
 from typing import Any
+from decimal import Decimal, InvalidOperation
 
 import httpx, bcrypt, jwt
 import psycopg
@@ -99,6 +100,22 @@ ORDER_EXTRA_COLUMNS = {
     "admin_note": "TEXT",
 }
 
+LEGACY_PLAN_PRICES = {
+    "c10": Decimal("30"),
+    "c50": Decimal("99"),
+    "c200": Decimal("269"),
+    "c500": Decimal("999"),
+}
+
+def _to_decimal_amount(value: Any) -> Decimal:
+    try:
+        return Decimal(str(value)).quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError, ValueError):
+        raise RuntimeError("支付金额解析失败")
+
+def _money_to_float(value: Any) -> float:
+    return float(_to_decimal_amount(value))
+
 # ─── DB ───────────────────────────────────────────────
 USING_POSTGRES = DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")
 
@@ -111,8 +128,18 @@ def _pg_conn_kwargs() -> dict:
 def _ensure_orders_schema(db) -> None:
     if USING_POSTGRES:
         cur = db.cursor()
+        cur.execute(
+            """ALTER TABLE orders
+               ALTER COLUMN amount TYPE NUMERIC(10,2)
+               USING amount::numeric"""
+        )
         for name, spec in ORDER_EXTRA_COLUMNS.items():
             cur.execute(f"ALTER TABLE orders ADD COLUMN IF NOT EXISTS {name} {spec}")
+        for plan_id, legacy_amount in LEGACY_PLAN_PRICES.items():
+            cur.execute(
+                "UPDATE orders SET amount=%s WHERE plan_id=%s AND amount=%s",
+                (str(PLANS[plan_id]["price"]), plan_id, str(legacy_amount)),
+            )
         db.commit()
         return
 
@@ -121,6 +148,11 @@ def _ensure_orders_schema(db) -> None:
     for name, spec in ORDER_EXTRA_COLUMNS.items():
         if name not in existing:
             db.execute(f"ALTER TABLE orders ADD COLUMN {name} {spec}")
+    for plan_id, legacy_amount in LEGACY_PLAN_PRICES.items():
+        db.execute(
+            "UPDATE orders SET amount=? WHERE plan_id=? AND amount=?",
+            (float(PLANS[plan_id]["price"]), plan_id, float(legacy_amount)),
+        )
     db.commit()
 
 def _table_columns(db, table_name: str) -> set[str]:
@@ -273,7 +305,7 @@ def get_db():
             id TEXT PRIMARY KEY,
             user_id INTEGER,
             plan_id TEXT,
-            amount INTEGER,
+            amount NUMERIC(10,2),
             credits INTEGER,
             status TEXT DEFAULT 'pending',
             created_at TEXT,
@@ -305,7 +337,7 @@ def get_db():
         status TEXT DEFAULT 'pending', error TEXT, created_at TEXT)""")
     conn.execute("""CREATE TABLE IF NOT EXISTS orders(
         id TEXT PRIMARY KEY, user_id INTEGER, plan_id TEXT,
-        amount INTEGER, credits INTEGER, status TEXT DEFAULT 'pending', created_at TEXT,
+        amount REAL, credits INTEGER, status TEXT DEFAULT 'pending', created_at TEXT,
         provider TEXT DEFAULT 'creem', provider_checkout_id TEXT, provider_order_id TEXT,
         provider_product_id TEXT, provider_checkout_url TEXT, provider_request_id TEXT,
         provider_customer_email TEXT, paid_at TEXT, admin_note TEXT)""")
@@ -492,7 +524,7 @@ def _creem_plan_product_id(plan_id: str) -> str:
 def _payment_payload_base(order_id: str, plan: dict, status: str = "pending") -> dict:
     return {
         "order_id": order_id,
-        "amount": plan["price"],
+        "amount": _money_to_float(plan["price"]),
         "name": plan["name"],
         "status": status,
         "provider": "creem",
@@ -523,14 +555,14 @@ def _mark_order_paid(order_id: str, total_amount: str | None = None, trade_no: s
             return True
         if total_amount is not None:
             try:
-                paid_amount = int(float(total_amount))
-                expected_amount = int(amount)
-                if paid_amount not in {expected_amount, expected_amount * 100}:
+                paid_amount = _to_decimal_amount(total_amount)
+                expected_amount = _to_decimal_amount(amount)
+                if paid_amount != expected_amount:
                     db.rollback()
                     raise RuntimeError("支付金额不一致")
-            except ValueError:
+            except RuntimeError:
                 db.rollback()
-                raise RuntimeError("支付金额解析失败")
+                raise
         db_execute(
             db,
             "UPDATE orders SET status='paid', provider_order_id=COALESCE(provider_order_id, %s), paid_at=%s WHERE id=%s AND status<>'paid'",
@@ -1185,10 +1217,10 @@ def history(uid=Depends(current_uid)):
 
 # ─── PAYMENT ──────────────────────────────────────────
 PLANS = {
-    "c10": {"price": 30, "credits": 13, "name": "Starter Pack"},
-    "c50": {"price": 99, "credits": 78, "name": "Monthly"},
-    "c200": {"price": 269, "credits": 260, "name": "Quarterly"},
-    "c500": {"price": 999, "credits": 2600, "name": "Pro Annual"},
+    "c10": {"price": Decimal("5.99"), "credits": 13, "name": "Starter Pack"},
+    "c50": {"price": Decimal("19.99"), "credits": 78, "name": "Monthly"},
+    "c200": {"price": Decimal("49.99"), "credits": 260, "name": "Quarterly"},
+    "c500": {"price": Decimal("199.99"), "credits": 2600, "name": "Pro Annual"},
 }
 
 class OrderReq(BaseModel):
@@ -1211,7 +1243,7 @@ async def create_order(r: OrderReq, uid=Depends(current_uid)):
             oid,
             uid,
             r.plan_id,
-            plan["price"],
+            _money_to_float(plan["price"]),
             plan["credits"],
             "pending",
             datetime.utcnow().isoformat(),
@@ -1437,7 +1469,7 @@ def admin_create_manual_order(payload: AdminManualOrderReq, request: Request, _=
     plan = PLANS.get(payload.plan_id)
     if not plan:
         raise HTTPException(400, "Invalid plan.")
-    amount = int(payload.amount if payload.amount is not None else plan["price"])
+    amount = _money_to_float(payload.amount if payload.amount is not None else plan["price"])
     credits = int(payload.credits if payload.credits is not None else plan["credits"])
     status = (payload.status or "paid").strip().lower()
     if status not in {"paid", "pending", "failed"}:
@@ -1579,7 +1611,7 @@ def admin_orders_export(request: Request, _=Depends(_require_admin)):
             row[1] or "",
             row[2] or "",
             PLANS.get(row[2], {}).get("name", row[2] or ""),
-            str(row[3] or 0),
+            str(_money_to_float(row[3] or 0)),
             str(row[4] or 0),
             row[5] or "",
             row[6] or "",
